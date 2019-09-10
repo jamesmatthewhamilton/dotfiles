@@ -1,0 +1,14 @@
+[user]
+	name = James Matthew Hamilton
+	email = j.hamilton@gatech.edu
+[alias]
+	st = status
+        br = branch
+        co = checkout
+        df = diff
+        ds = diff --stat
+        sf = submodule foreach
+        ss = submodule summary
+        plog = log -p --decorate
+        slog = log --graph --stat --decorate
+        llog = log --graph --decorate --pretty=oneline --abbrev-commit --all
