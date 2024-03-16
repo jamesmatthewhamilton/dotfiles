@@ -9,6 +9,7 @@
         ds = diff --stat
         sf = submodule foreach
         ss = submodule summary
+        padd = add --patch -u
         plog = log -p --decorate
         slog = log --graph --stat --decorate
         llog = log --graph --decorate --pretty=oneline --abbrev-commit --all
