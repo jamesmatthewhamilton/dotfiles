@@ -49,8 +49,12 @@
 ;; don't let `next-line' add new lines in buffer
 (setq next-line-add-newlines nil)
 
-;; set default-fill-column for Matlab mode?
-(setq default-fill-column 80)
+;; set default-fill-column length
+(setq default-fill-column 100)
+
+;; when pressing \n the default-fill-column will kick-in
+(setq comment-auto-fill-only-comments t)
+(add-hook 'prog-mode-hook 'auto-fill-mode)
 
 ;; delete trailing white-s-modpace before save
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
@@ -93,11 +97,11 @@
 (add-hook 'find-file-hook (lambda () (set-face-attribute 'default nil :height 100)))
 
 ;; where to send backup files (TODO: reduce this code)
-(setq BACKUP_DIR "~/Backups/Emacs/")
-(shell-command (concat "mkdir -p " (symbol-value 'BACKUP_DIR)))
-(setq backup-directory-alist '(("." . (symbol-value 'BACKUP_DIR))))
+;;(setq BACKUP_DIR "~/Backups/Emacs/")
+(shell-command (concat "mkdir -p ~/Backups/Emacs"))
+(setq backup-directory-alist '(("." . "~/Backups/Emacs")))
 (setq backup-by-copying t)
-(defcustom auto-save-dir-base (symbol-value 'BACKUP_DIR)
+(defcustom auto-save-dir-base "~/Backups/Emacs"
   "File name base for auto-save-dir.
 The real auto save directory name is created by appending the UID of the user.
 /Restart of emacs required after changes."
@@ -123,13 +127,13 @@ Can be used in `auto-save-hook'."
 (add-to-list 'auto-save-file-name-transforms (list "\\`.*\\'" (concat (auto-save-dir) "\\&") nil) t)
 
 
-;; ------------------------ Keybindings ------------------------
+;; ------------------------ Peronsal Keybindings ------------------------
 ;; Tip: S-C = Control-Shift
 
 (global-set-key (kbd "M-C-<down>") 'scroll-up-line)
 (global-set-key (kbd "M-C-<up>") 'scroll-down-line)
 (global-set-key (kbd "S-C-<left>") 'shrink-window-horizontally)
-(global-set-key (kbd "S-C-<Right>") 'enlarge-window-horizontally)
+(global-set-key (kbd "S-C-<right>") 'enlarge-window-horizontally)
 (global-set-key (kbd "S-C-<down>") 'shrink-window)
 (global-set-key (kbd "S-C-<up>") 'enlarge-window)
 (global-set-key (kbd "M-g") 'goto-line)
