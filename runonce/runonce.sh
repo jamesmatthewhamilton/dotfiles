@@ -4,13 +4,11 @@ set -euo pipefail
 # Get the directory where this script lives (dotfiles root)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# ANSI color codes
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
-RESET='\033[0m'
+# Load shared color definitions
+source "${SCRIPT_DIR}/bash/lib_colors.sh"
 
 warn() {
-    printf "${YELLOW}WARNING: %s${RESET}\n" "$1"
+    printf "${BOLD_YELLOW}WARNING: %s${RESET}\n" "$1"
 }
 
 success() {
@@ -88,6 +86,9 @@ setup_symlinks() {
     # Bash configuration - main entry point
     create_symlink "${SCRIPT_DIR}/bash/bashrc.sh" "${HOME}/.bashrc"
 
+    # Bash libraries - loaded first (lib_*.sh)
+    create_symlink "${SCRIPT_DIR}/bash/lib_colors.sh" "${HOME}/.lib_colors.sh"
+
     # Bash configuration - modular config files
     # These are sourced by bashrc.sh via glob pattern bashrc_[[:alpha:]]*.sh
     create_symlink "${SCRIPT_DIR}/bash/bashrc_config.sh" "${HOME}/.bashrc_config.sh"
@@ -103,8 +104,7 @@ setup_symlinks() {
     # macOS-specific (only on Darwin)
     if [ "$(uname)" = "Darwin" ]; then
         create_symlink "${SCRIPT_DIR}/mac/DefaultKeyBinding.dict" "${HOME}/Library/KeyBindings/DefaultKeyBinding.dict"
-        # macOS-specific bash completion (double underscore = OS-specific)
-        create_symlink "${SCRIPT_DIR}/bash/bashrc__mac.sh" "${HOME}/.bashrc__mac.sh"
+        create_symlink "${SCRIPT_DIR}/bash/mac_bashrc.sh" "${HOME}/.mac_bashrc.sh"
     fi
 
     printf "\n=== Symlink setup complete ===\n"
