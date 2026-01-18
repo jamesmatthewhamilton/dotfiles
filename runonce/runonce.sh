@@ -94,6 +94,7 @@ setup_symlinks() {
     create_symlink "${SCRIPT_DIR}/bash/bashrc_config.sh" "${HOME}/.bashrc_config.sh"
     create_symlink "${SCRIPT_DIR}/bash/bashrc_aliases.sh" "${HOME}/.bashrc_aliases.sh"
     create_symlink "${SCRIPT_DIR}/bash/bashrc_docker.sh" "${HOME}/.bashrc_docker.sh"
+    create_symlink "${SCRIPT_DIR}/bash/bashrc_tmp.sh" "${HOME}/.bashrc_tmp.sh"
 
     # Git configuration
     create_symlink "${SCRIPT_DIR}/.gitconfig" "${HOME}/.gitconfig"
