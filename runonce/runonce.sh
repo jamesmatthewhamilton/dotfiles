@@ -83,6 +83,14 @@ create_symlink() {
 setup_symlinks() {
     printf "\n=== Setting up dotfile symlinks ===\n\n"
 
+    # Special case: if ~/.bashrc exists as a regular file, append its contents to bashrc_tmp.sh
+    if [ -f "${HOME}/.bashrc" ] && [ ! -L "${HOME}/.bashrc" ]; then
+        printf "Moving contents of bashrc to bashrc_tmp...\n"
+        echo "" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        echo "# --- Migrated from original ~/.bashrc ---" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        cat "${HOME}/.bashrc" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+    fi
+
     # Bash configuration - main entry point
     create_symlink "${SCRIPT_DIR}/bash/bashrc.sh" "${HOME}/.bashrc"
 
