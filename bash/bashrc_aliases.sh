@@ -19,3 +19,17 @@ bio-vcfs-annotate() {
     tabix -p vcf "$out/$b.annot.vcf.gz"
   done
 }
+
+
+# Convert all VCFs in a directory to PLINK binary filesets (BED/BIM/FAM), one per VCF.
+# INPUT : $1 = input dir (default: .) containing *.vcf or *.vcf.gz
+# OUTPUT: $2 = output dir (default: <input>/plink) containing <base>.bed/.bim/.fam (+ <base>.log)
+bio-vcf-2-bedbimfam() {
+  local in="${1:-.}" out="${2:-"$in/plink"}" v b
+  mkdir -p "$out"
+  for v in "$in"/*.vcf "$in"/*.vcf.gz; do
+    [[ -e "$v" ]] || continue
+    b="$(basename "${v%.vcf*}")"
+    plink2 --vcf "$v" --make-bed --double-id --out "$out/$b"
+  done
+}
