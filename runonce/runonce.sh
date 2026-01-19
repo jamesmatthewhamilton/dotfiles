@@ -147,6 +147,18 @@ globals() {
         gcc gcc-c++ make pkgconfig  # C/C++
         openssh-clients  # Remote connect via ssh
     )
+
+    # Conda packages (user-space, no root required)
+    # Channels: conda-forge (general), bioconda (bioinformatics)
+    CONDA_PKGS=(
+        git
+        curl
+        wget
+        tree
+        screen
+        make
+        pkg-config
+    )
 }
 
 does_cmd_exist() {
@@ -180,13 +192,36 @@ install() {
         PM="dnf"
     elif does_cmd_exist yum; then
         PM="yum"
-    else
-        printf "No supported package manager found (brew/apt/dnf/yum)."
+    elif does_cmd_exist conda; then
+        PM="conda"
+    fi
+
+    # If system PM requires sudo but we don't have it, fall back to conda
+    if [ "$PM" != "brew" ] && [ "$PM" != "conda" ] && [ "$(id -u)" -ne 0 ] && ! does_cmd_exist sudo; then
+        warn "No sudo access, falling back to conda"
+        PM="conda"
+    fi
+
+    # Bootstrap miniconda if conda selected but not installed
+    if [ "$PM" = "conda" ] && ! does_cmd_exist conda; then
+        printf "Bootstrapping miniconda...\n"
+        curl -Ls https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o /tmp/miniconda.sh
+        bash /tmp/miniconda.sh -b -p "$HOME/miniconda3"
+        rm /tmp/miniconda.sh
+        export PATH="$HOME/miniconda3/bin:$PATH"
+    fi
+
+    if [ -z "$PM" ]; then
+        printf "No supported package manager found (brew/apt/dnf/yum/conda)."
         exit 1
     fi
 
-    printf "Detected package manager: $PM"
-    need_sudo
+    printf "Detected package manager: $PM\n"
+
+    # Only need sudo for system package managers
+    if [ "$PM" != "brew" ] && [ "$PM" != "conda" ]; then
+        need_sudo
+    fi
 
     # ----- Install packages -----
     case "$PM" in
@@ -248,6 +283,11 @@ install() {
                 printf "Installing packages (yum)…"
                 $SUDO yum install -y "${DNF_YUM_PKGS[@]}"
             fi
+            ;;
+
+        conda)
+            printf "Installing packages (conda)…\n"
+            conda install -y -c conda-forge "${CONDA_PKGS[@]}"
             ;;
 
     esac
