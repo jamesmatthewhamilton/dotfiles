@@ -96,6 +96,10 @@ setup_symlinks() {
     create_symlink "${SCRIPT_DIR}/bash/bashrc_docker.sh" "${HOME}/.bashrc_docker.sh"
     create_symlink "${SCRIPT_DIR}/bash/bashrc_tmp.sh" "${HOME}/.bashrc_tmp.sh"
 
+    # Mark bashrc_tmp.sh as skip-worktree so local changes don't appear in git status
+    git -C "${SCRIPT_DIR}" update-index --skip-worktree bash/bashrc_tmp.sh 2>/dev/null && \
+        success "Marked bashrc_tmp.sh as skip-worktree" || true
+
     # Git configuration
     create_symlink "${SCRIPT_DIR}/.gitconfig" "${HOME}/.gitconfig"
 
