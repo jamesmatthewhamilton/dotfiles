@@ -86,15 +86,39 @@ setup_symlinks() {
     # Special case: if ~/.bashrc exists as a regular file, append its contents to bashrc_tmp.sh
     if [ -f "${HOME}/.bashrc" ] && [ ! -L "${HOME}/.bashrc" ]; then
         printf "Moving contents of bashrc to bashrc_tmp...\n"
-        echo "" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        echo "# -------------------------------------------------------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        echo "# ------ [START] Migration from original ~/.bashrc ------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        echo "# -------------------------------------------------------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        cat "${HOME}/.bashrc" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        echo "# -----------------------------------------------------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        echo "# ------ [END] Migration from original ~/.bashrc ------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        echo "# -----------------------------------------------------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        local tmp_file="${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        local added_header=false
 
+        while IFS= read -r line || [ -n "$line" ]; do
+            # Skip empty lines for duplicate check
+            if [ -z "$line" ]; then
+                if [ "$added_header" = true ]; then
+                    echo "" >> "$tmp_file"
+                fi
+                continue
+            fi
+            # Check if line already exists in bashrc_tmp.sh
+            if grep -Fxq "$line" "$tmp_file" 2>/dev/null; then
+                warn "Skipping duplicate: $line"
+            else
+                # Add header on first new line
+                if [ "$added_header" = false ]; then
+                    echo "" >> "$tmp_file"
+                    echo "# -------------------------------------------------------" >> "$tmp_file"
+                    echo "# ------ [START] Migration from original ~/.bashrc ------" >> "$tmp_file"
+                    echo "# -------------------------------------------------------" >> "$tmp_file"
+                    added_header=true
+                fi
+                echo "$line" >> "$tmp_file"
+            fi
+        done < "${HOME}/.bashrc"
+
+        # Add footer if we added anything
+        if [ "$added_header" = true ]; then
+            echo "# -----------------------------------------------------" >> "$tmp_file"
+            echo "# ------ [END] Migration from original ~/.bashrc ------" >> "$tmp_file"
+            echo "# -----------------------------------------------------" >> "$tmp_file"
+        fi
     fi
 
     # Bash configuration - main entry point
