@@ -192,34 +192,18 @@ install() {
         PM="dnf"
     elif does_cmd_exist yum; then
         PM="yum"
-    elif does_cmd_exist conda; then
-        PM="conda"
-    fi
-
-    # If system PM requires sudo but we don't have it, fall back to conda
-    if [ "$PM" != "brew" ] && [ "$PM" != "conda" ] && [ "$(id -u)" -ne 0 ] && ! does_cmd_exist sudo; then
-        warn "No sudo access, falling back to conda"
-        PM="conda"
-    fi
-
-    # Bootstrap miniconda if conda selected but not installed
-    if [ "$PM" = "conda" ] && ! does_cmd_exist conda; then
-        printf "Bootstrapping miniconda...\n"
-        curl -Ls https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o /tmp/miniconda.sh
-        bash /tmp/miniconda.sh -b -p "$HOME/miniconda3"
-        rm /tmp/miniconda.sh
-        export PATH="$HOME/miniconda3/bin:$PATH"
     fi
 
     if [ -z "$PM" ]; then
-        printf "No supported package manager found (brew/apt/dnf/yum/conda)."
+        printf "No supported package manager found (brew/apt/dnf/yum).\n"
+        printf "For systems without root access, use: ./runonce.sh install-conda\n"
         exit 1
     fi
 
     printf "Detected package manager: $PM\n"
 
-    # Only need sudo for system package managers
-    if [ "$PM" != "brew" ] && [ "$PM" != "conda" ]; then
+    # Need sudo for system package managers (not brew)
+    if [ "$PM" != "brew" ]; then
         need_sudo
     fi
 
@@ -285,11 +269,6 @@ install() {
             fi
             ;;
 
-        conda)
-            printf "Installing packages (conda)…\n"
-            conda install -y -c conda-forge "${CONDA_PKGS[@]}"
-            ;;
-
     esac
 
     # ----- Post-install quality-of-life tweaks -----
@@ -308,13 +287,32 @@ install() {
     printf "Done. Open a new shell and try:  git chec<Tab>   or   rg --he<Tab>\n"
 }
 
+install_conda() {
+    globals
+
+    # Bootstrap miniconda if not installed
+    if ! does_cmd_exist conda; then
+        printf "Bootstrapping miniconda...\n"
+        curl -Ls https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o /tmp/miniconda.sh
+        bash /tmp/miniconda.sh -b -p "$HOME/miniconda3"
+        rm /tmp/miniconda.sh
+        export PATH="$HOME/miniconda3/bin:$PATH"
+    fi
+
+    printf "Installing packages (conda)…\n"
+    conda install -y --override-channels -c conda-forge "${CONDA_PKGS[@]}"
+
+    printf "Done. Add to PATH: export PATH=\"\$HOME/miniconda3/bin:\$PATH\"\n"
+}
+
 usage() {
     printf "Usage: %s [command]\n\n" "$(basename "$0")"
     printf "Commands:\n"
-    printf "  link      Setup symlinks only (no package installation)\n"
-    printf "  install   Install packages only (no symlinks)\n"
-    printf "  all       Install packages AND setup symlinks (default)\n"
-    printf "  help      Show this help message\n"
+    printf "  link           Setup symlinks only (no package installation)\n"
+    printf "  install        Install packages via system package manager (requires root)\n"
+    printf "  install-conda  Install packages via conda (no root required)\n"
+    printf "  all            Install packages AND setup symlinks (default)\n"
+    printf "  help           Show this help message\n"
 }
 
 main() {
@@ -326,6 +324,9 @@ main() {
             ;;
         install)
             install
+            ;;
+        install-conda)
+            install_conda
             ;;
         all)
             install
