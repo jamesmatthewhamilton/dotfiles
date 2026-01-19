@@ -87,8 +87,14 @@ setup_symlinks() {
     if [ -f "${HOME}/.bashrc" ] && [ ! -L "${HOME}/.bashrc" ]; then
         printf "Moving contents of bashrc to bashrc_tmp...\n"
         echo "" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        echo "# --- Migrated from original ~/.bashrc ---" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        echo "# -------------------------------------------------------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        echo "# ------ [START] Migration from original ~/.bashrc ------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        echo "# -------------------------------------------------------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
         cat "${HOME}/.bashrc" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        echo "# -----------------------------------------------------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        echo "# ------ [END] Migration from original ~/.bashrc ------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        echo "# -----------------------------------------------------" >> "${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+
     fi
 
     # Bash configuration - main entry point
