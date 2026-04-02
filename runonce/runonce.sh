@@ -15,6 +15,23 @@ success() {
     printf "${GREEN}✓ %s${RESET}\n" "$1"
 }
 
+# Verify SHA256 checksum of a file. Exits on mismatch.
+verify_checksum() {
+    local file="$1"
+    local expected="$2"
+    local actual
+    if does_cmd_exist shasum; then
+        actual="$(shasum -a 256 "$file" | awk '{print $1}')"
+    else
+        actual="$(sha256sum "$file" | awk '{print $1}')"
+    fi
+    if [ "$actual" != "$expected" ]; then
+        printf "CHECKSUM MISMATCH for %s\n  expected: %s\n  actual:   %s\n" "$file" "$expected" "$actual" >&2
+        rm -f "$file"
+        exit 1
+    fi
+}
+
 # Backup a file by adding .bak.YYYY-MM-DD suffix (with counter if needed)
 backup_file() {
     local target="$1"
@@ -148,15 +165,12 @@ setup_symlinks() {
 
 globals() {
 
-    PKGS=(
+    BREW_PKGS=(
         git  # Version control
         curl  # HTTP(S) client for APIs/downloads
         wget  # Alternative downloader (HTTP/FTP); handy with curl
         tree  # Directory tree viewer
         screen  # Terminal multiplexer (persistent splits/sessions)
-    )
-
-    BREW_PKGS=(
         bash  # Modern Bash 5+ (macOS ships ancient 3.2)
         bash-completion@2  # Programmable tab-completion for Bash 4/5
         gcc make pkg-config  # C/C++
@@ -168,14 +182,24 @@ globals() {
     )
 
     APT_PKGS=(
+        git  # Version control
+        curl  # HTTP(S) client for APIs/downloads
+        wget  # Alternative downloader (HTTP/FTP); handy with curl
+        tree  # Directory tree viewer
+        screen  # Terminal multiplexer (persistent splits/sessions)
         bash-completion  # Programmable tab-completion for Bash 4/5
         build-essential pkg-config  # C/C++
         openssh-client  # Remote connect via ssh
     )
 
     DNF_YUM_PKGS=(
+        git  # Version control
+        curl  # HTTP(S) client for APIs/downloads
+        wget  # Alternative downloader (HTTP/FTP); handy with curl
+        tree  # Directory tree viewer
+        screen  # Terminal multiplexer (persistent splits/sessions)
         bash-completion  # Programmable tab-completion for Bash 4/5
-        gcc gcc-c++ make pkgconfig  # C/C++
+        gcc gcc-c++ make pkg-config  # C/C++
         openssh-clients  # Remote connect via ssh
     )
 
@@ -215,23 +239,30 @@ setup_conda() {
     # Create Repos directory if needed
     mkdir -p "$HOME/Repos"
 
-    # Download appropriate installer for platform
-    local MINICONDA_URL
+    # Pinned Miniconda versions and checksums for supply chain safety
+    local MINICONDA_URL MINICONDA_SHA256
     if [ "$(uname)" = "Darwin" ]; then
-        # macOS - detect architecture
         if [ "$(uname -m)" = "arm64" ]; then
-            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh"
+            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-MacOSX-arm64.sh"
+            MINICONDA_SHA256="745f97a6553ebdce0bfdaafe00b0d1939784b38cdaadb3378ca7868a51616a65"
         else
-            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh"
+            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_25.7.0-2-MacOSX-x86_64.sh"
+            MINICONDA_SHA256="9c88674b1a839eeb4cff006df397a05ea7d896472318fd84b7070278f9653dc6"
         fi
     else
-        # Linux
-        MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+        MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-Linux-x86_64.sh"
+        MINICONDA_SHA256="f6dfb5b59614fd7b2956b240b2575a9d58203ec7f7a99f85128158a0fdc5c1d7"
     fi
 
-    curl -fsSL "$MINICONDA_URL" -o /tmp/miniconda.sh
-    bash /tmp/miniconda.sh -b -p "$CONDA_DIR"
-    rm /tmp/miniconda.sh
+    local conda_tmp
+    conda_tmp="$(mktemp /tmp/miniconda.XXXXXX.sh)"
+    trap 'rm -f "$conda_tmp"' EXIT
+
+    curl -fsSL "$MINICONDA_URL" -o "$conda_tmp"
+    verify_checksum "$conda_tmp" "$MINICONDA_SHA256"
+    bash "$conda_tmp" -b -p "$CONDA_DIR"
+    rm -f "$conda_tmp"
+    trap - EXIT
 
     # Disable auto-activation of base environment
     "$CONDA_DIR/bin/conda" config --set auto_activate_base false
@@ -284,8 +315,18 @@ setup_homebrew() {
     if [ "$need_install" = true ]; then
         printf "Installing Homebrew...\n"
 
-        # Run Homebrew installer (NONINTERACTIVE skips confirmation prompts)
-        NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        # Pinned commit and checksum for supply chain safety
+        local brew_commit="6d5e2670d07961e7985d2079a2f0a484420f3c38"
+        local brew_sha256="dfd5145fe2aa5956a600e35848765273f5798ce6def01bd08ecec088a1268d91"
+        local brew_tmp
+        brew_tmp="$(mktemp /tmp/brew-install.XXXXXX.sh)"
+        trap 'rm -f "$brew_tmp"' EXIT
+
+        curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/${brew_commit}/install.sh" -o "$brew_tmp"
+        verify_checksum "$brew_tmp" "$brew_sha256"
+        NONINTERACTIVE=1 /bin/bash "$brew_tmp"
+        rm -f "$brew_tmp"
+        trap - EXIT
 
         success "Homebrew installed"
     fi
@@ -432,9 +473,28 @@ install_conda() {
     # Bootstrap miniconda if not installed
     if ! does_cmd_exist conda; then
         printf "Bootstrapping miniconda...\n"
-        curl -Ls https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o /tmp/miniconda.sh
-        bash /tmp/miniconda.sh -b -p "$HOME/miniconda3"
-        rm /tmp/miniconda.sh
+        local MINICONDA_URL MINICONDA_SHA256
+        if [ "$(uname)" = "Darwin" ]; then
+            if [ "$(uname -m)" = "arm64" ]; then
+                MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-MacOSX-arm64.sh"
+                MINICONDA_SHA256="745f97a6553ebdce0bfdaafe00b0d1939784b38cdaadb3378ca7868a51616a65"
+            else
+                MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_25.7.0-2-MacOSX-x86_64.sh"
+                MINICONDA_SHA256="9c88674b1a839eeb4cff006df397a05ea7d896472318fd84b7070278f9653dc6"
+            fi
+        else
+            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-Linux-x86_64.sh"
+            MINICONDA_SHA256="f6dfb5b59614fd7b2956b240b2575a9d58203ec7f7a99f85128158a0fdc5c1d7"
+        fi
+        local conda_tmp
+        conda_tmp="$(mktemp /tmp/miniconda.XXXXXX.sh)"
+        trap 'rm -f "$conda_tmp"' EXIT
+
+        curl -fsSL "$MINICONDA_URL" -o "$conda_tmp"
+        verify_checksum "$conda_tmp" "$MINICONDA_SHA256"
+        bash "$conda_tmp" -b -p "$HOME/miniconda3"
+        rm -f "$conda_tmp"
+        trap - EXIT
         export PATH="$HOME/miniconda3/bin:$PATH"
     fi
 
