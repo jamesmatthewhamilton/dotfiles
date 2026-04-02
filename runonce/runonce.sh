@@ -85,39 +85,24 @@ setup_symlinks() {
 
     # Special case: if ~/.bashrc exists as a regular file, append its contents to bashrc_tmp.sh
     if [ -f "${HOME}/.bashrc" ] && [ ! -L "${HOME}/.bashrc" ]; then
-        printf "Moving contents of bashrc to bashrc_tmp...\n"
         local tmp_file="${SCRIPT_DIR}/bash/bashrc_tmp.sh"
-        local added_header=false
 
-        while IFS= read -r line || [ -n "$line" ]; do
-            # Skip empty lines for duplicate check
-            if [ -z "$line" ]; then
-                if [ "$added_header" = true ]; then
-                    echo "" >> "$tmp_file"
-                fi
-                continue
-            fi
-            # Check if line already exists in bashrc_tmp.sh
-            if grep -Fxq "$line" "$tmp_file" 2>/dev/null; then
-                warn "Skipping duplicate: $line"
-            else
-                # Add header on first new line
-                if [ "$added_header" = false ]; then
-                    echo "" >> "$tmp_file"
-                    echo "# -------------------------------------------------------" >> "$tmp_file"
-                    echo "# ------ [START] Migration from original ~/.bashrc ------" >> "$tmp_file"
-                    echo "# -------------------------------------------------------" >> "$tmp_file"
-                    added_header=true
-                fi
-                echo "$line" >> "$tmp_file"
-            fi
-        done < "${HOME}/.bashrc"
-
-        # Add footer if we added anything
-        if [ "$added_header" = true ]; then
-            echo "# -----------------------------------------------------" >> "$tmp_file"
-            echo "# ------ [END] Migration from original ~/.bashrc ------" >> "$tmp_file"
-            echo "# -----------------------------------------------------" >> "$tmp_file"
+        # Skip if migration was already performed
+        if grep -Fq "[START] Migration from original ~/.bashrc" "$tmp_file" 2>/dev/null; then
+            warn "Migration markers already present in bashrc_tmp.sh, skipping"
+        else
+            printf "Moving contents of bashrc to bashrc_tmp...\n"
+            {
+                echo ""
+                echo "# -------------------------------------------------------"
+                echo "# ------ [START] Migration from original ~/.bashrc ------"
+                echo "# -------------------------------------------------------"
+                cat "${HOME}/.bashrc"
+                echo "# -----------------------------------------------------"
+                echo "# ------ [END] Migration from original ~/.bashrc ------"
+                echo "# -----------------------------------------------------"
+            } >> "$tmp_file"
+            success "Appended ~/.bashrc contents to bashrc_tmp.sh"
         fi
     fi
 
