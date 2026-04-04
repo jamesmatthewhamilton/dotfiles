@@ -344,6 +344,71 @@ setup_homebrew() {
     fi
 }
 
+# Install Docker and enable on boot (Linux only)
+setup_docker() {
+    # Skip if already installed
+    if does_cmd_exist docker; then
+        success "Docker already installed"
+        return 0
+    fi
+
+    if [ "$(uname)" = "Darwin" ]; then
+        printf "Installing Docker Desktop (brew cask)…\n"
+        brew install --cask docker || true
+        success "Docker Desktop installed (launch manually from Applications)"
+    elif does_cmd_exist apt-get; then
+        printf "Installing Docker (official apt repo)…\n"
+        # Prerequisites
+        $SUDO apt-get install -y ca-certificates curl gnupg
+
+        # Add Docker's official GPG key
+        $SUDO install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | $SUDO gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        $SUDO chmod a+r /etc/apt/keyrings/docker.gpg
+
+        # Add the repository
+        echo \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+          $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+        $SUDO apt-get update -y
+        $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+        # Enable and start on boot
+        $SUDO systemctl enable docker
+        $SUDO systemctl start docker
+
+        # Allow current user to run docker without sudo
+        $SUDO usermod -aG docker "$USER" 2>/dev/null || true
+        success "Docker installed and enabled on boot (log out and back in for group change)"
+
+    elif does_cmd_exist dnf || does_cmd_exist yum; then
+        printf "Installing Docker (official yum/dnf repo)…\n"
+        local PM_CMD
+        if does_cmd_exist dnf; then PM_CMD="dnf"; else PM_CMD="yum"; fi
+
+        # Add Docker's official repo
+        $SUDO $PM_CMD install -y yum-utils
+        $SUDO yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+        # CentOS 8+ may conflict with podman
+        $SUDO $PM_CMD install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
+            --allowerasing || \
+        $SUDO $PM_CMD install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+        # Enable and start on boot
+        $SUDO systemctl enable docker
+        $SUDO systemctl start docker
+
+        # Allow current user to run docker without sudo
+        $SUDO usermod -aG docker "$USER" 2>/dev/null || true
+        success "Docker installed and enabled on boot (log out and back in for group change)"
+    else
+        warn "Could not install Docker: unsupported package manager"
+    fi
+}
+
 need_sudo() {
   if [ "$(id -u)" -eq 0 ]; then
     SUDO=""
@@ -452,6 +517,9 @@ install() {
             ;;
 
     esac
+
+    # ----- Install Docker -----
+    setup_docker
 
     # ----- Post-install quality-of-life tweaks -----
 
