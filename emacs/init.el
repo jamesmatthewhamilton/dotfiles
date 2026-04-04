@@ -96,12 +96,21 @@
 (set-face-attribute 'default nil :height 100)
 (add-hook 'find-file-hook (lambda () (set-face-attribute 'default nil :height 100)))
 
-;; where to send backup files (TODO: reduce this code)
-;;(setq BACKUP_DIR "~/Backups/Emacs/")
-(shell-command (concat "mkdir -p ~/Backups/Emacs"))
-(setq backup-directory-alist '(("." . "~/Backups/Emacs")))
+;; Backup and auto-save files
+(make-directory "~/.emacs.d/backups" t)
+(set-file-modes "~/.emacs.d/backups" #o700)
+(setq backup-directory-alist '(("." . "~/.emacs.d/backups")))
 (setq backup-by-copying t)
-(defcustom auto-save-dir-base "~/Backups/Emacs"
+;; Force backup files to be owner-only (TRAMP copies remote permissions otherwise)
+(setq backup-by-copying-when-mismatch t)
+(defun force-backup-permissions ()
+  "Set backup file permissions to 600 after creation."
+  (when (and buffer-file-name backup-directory-alist)
+    (let ((backup (car (find-backup-file-name buffer-file-name))))
+      (when (and backup (file-exists-p backup))
+        (set-file-modes backup #o600)))))
+(add-hook 'after-save-hook #'force-backup-permissions)
+(defcustom auto-save-dir-base "~/.emacs.d/backups"
   "File name base for auto-save-dir.
 The real auto save directory name is created by appending the UID of the user.
 /Restart of emacs required after changes."
