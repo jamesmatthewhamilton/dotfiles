@@ -250,12 +250,17 @@ setup_conda() {
             MINICONDA_SHA256="9c88674b1a839eeb4cff006df397a05ea7d896472318fd84b7070278f9653dc6"
         fi
     else
-        MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-Linux-x86_64.sh"
-        MINICONDA_SHA256="f6dfb5b59614fd7b2956b240b2575a9d58203ec7f7a99f85128158a0fdc5c1d7"
+        if [ "$(uname -m)" = "aarch64" ]; then
+            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-Linux-aarch64.sh"
+            MINICONDA_SHA256="07c82b5aec04d5f0f3e4b246835b6bc85e104821cbcb0a059c7ea80f028503f4"
+        else
+            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-Linux-x86_64.sh"
+            MINICONDA_SHA256="f6dfb5b59614fd7b2956b240b2575a9d58203ec7f7a99f85128158a0fdc5c1d7"
+        fi
     fi
 
     local conda_tmp
-    conda_tmp="$(mktemp /tmp/miniconda.XXXXXX.sh)"
+    conda_tmp="$(mktemp /tmp/miniconda-XXXXXX)"
     trap 'rm -f "$conda_tmp"' EXIT
 
     curl -fsSL "$MINICONDA_URL" -o "$conda_tmp"
@@ -319,7 +324,7 @@ setup_homebrew() {
         local brew_commit="6d5e2670d07961e7985d2079a2f0a484420f3c38"
         local brew_sha256="dfd5145fe2aa5956a600e35848765273f5798ce6def01bd08ecec088a1268d91"
         local brew_tmp
-        brew_tmp="$(mktemp /tmp/brew-install.XXXXXX.sh)"
+        brew_tmp="$(mktemp /tmp/brew-install-XXXXXX)"
         trap 'rm -f "$brew_tmp"' EXIT
 
         curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/${brew_commit}/install.sh" -o "$brew_tmp"
@@ -483,11 +488,16 @@ install_conda() {
                 MINICONDA_SHA256="9c88674b1a839eeb4cff006df397a05ea7d896472318fd84b7070278f9653dc6"
             fi
         else
-            MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-Linux-x86_64.sh"
-            MINICONDA_SHA256="f6dfb5b59614fd7b2956b240b2575a9d58203ec7f7a99f85128158a0fdc5c1d7"
+            if [ "$(uname -m)" = "aarch64" ]; then
+                MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-Linux-aarch64.sh"
+                MINICONDA_SHA256="07c82b5aec04d5f0f3e4b246835b6bc85e104821cbcb0a059c7ea80f028503f4"
+            else
+                MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-py313_26.1.1-1-Linux-x86_64.sh"
+                MINICONDA_SHA256="f6dfb5b59614fd7b2956b240b2575a9d58203ec7f7a99f85128158a0fdc5c1d7"
+            fi
         fi
         local conda_tmp
-        conda_tmp="$(mktemp /tmp/miniconda.XXXXXX.sh)"
+        conda_tmp="$(mktemp /tmp/miniconda-XXXXXX)"
         trap 'rm -f "$conda_tmp"' EXIT
 
         curl -fsSL "$MINICONDA_URL" -o "$conda_tmp"
