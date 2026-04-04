@@ -1,5 +1,23 @@
+
+
+# disk usage (du) in working directory sorted by available
+dev-du-sort() {
+  du -sh ${1}[^.]* */ 2>/dev/null | sort -hr
+}
+
+# disk free (df) sorted by available
+dev-df-sort() {
+  df -h | head -1; df -h | tail -n +2 | sort -hrk 3
+}
+
+# refresh bash session including bashrc
+dev-bashrc-refresh() {
+  exec bash
+  # source ~/.bashrc
+}
+
 # Move uncommitted bashrc.sh additions to bashrc_tmp.sh
-bashrc-migrate-to-tmp() {
+dev-devops-bashrc-migrate-to-tmp() {
   local sf=~/.bashrc
   while [[ -L "$sf" ]]; do sf="$(cd "$(dirname "$sf")" && readlink "$(basename "$sf")")"; done
   local dir=$(cd "$(dirname "$sf")" && pwd)

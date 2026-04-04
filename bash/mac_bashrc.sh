@@ -14,11 +14,11 @@ fi
 
 # Bash completion (if installed via brew)
 if command -v brew &>/dev/null; then
-    local brew_prefix
-    brew_prefix="$(brew --prefix)"
-    if [ -f "$brew_prefix/etc/profile.d/bash_completion.sh" ]; then
-        . "$brew_prefix/etc/profile.d/bash_completion.sh"
-    elif [ -f "$brew_prefix/etc/bash_completion" ]; then
-        . "$brew_prefix/etc/bash_completion"
+    _brew_prefix="$(brew --prefix)"
+    if [ -f "$_brew_prefix/etc/profile.d/bash_completion.sh" ]; then
+        . "$_brew_prefix/etc/profile.d/bash_completion.sh"
+    elif [ -f "$_brew_prefix/etc/bash_completion" ]; then
+        . "$_brew_prefix/etc/bash_completion"
     fi
+    unset _brew_prefix
 fi

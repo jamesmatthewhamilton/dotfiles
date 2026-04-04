@@ -470,6 +470,27 @@ install() {
             printf "Installing packages (brew)…\n"
             brew install "${BREW_PKGS[@]}" || true
 
+            # Set Homebrew bash as login shell (eliminates macOS zsh nag)
+            local brew_bash=""
+            if [ -x /opt/homebrew/bin/bash ]; then
+                brew_bash="/opt/homebrew/bin/bash"
+            elif [ -x /usr/local/bin/bash ]; then
+                brew_bash="/usr/local/bin/bash"
+            fi
+            if [ -n "$brew_bash" ]; then
+                if ! grep -Fxq "$brew_bash" /etc/shells 2>/dev/null; then
+                    sudo sh -c "echo '$brew_bash' >> /etc/shells"
+                fi
+                if [ "$(dscl . -read /Users/$USER UserShell | awk '{print $2}')" != "$brew_bash" ]; then
+                    chsh -s "$brew_bash"
+                    success "Login shell set to $brew_bash"
+                else
+                    success "Login shell already set to $brew_bash"
+                fi
+            else
+                warn "Homebrew bash not found, skipping login shell change"
+            fi
+
             # Optional: set up fzf key bindings if installed
             if does_cmd_exist fzf && [ -f "$(brew --prefix)/opt/fzf/install" ]; then
                 yes | "$(brew --prefix)"/opt/fzf/install --key-bindings --completion --no-update-rc >/dev/null
