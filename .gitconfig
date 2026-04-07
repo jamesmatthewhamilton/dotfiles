@@ -7,9 +7,27 @@
         co = checkout
         df = diff
         ds = diff --stat
+        sub = submodule
+        rsub = submodule update --init --recursive
         sf = submodule foreach
         ss = submodule summary
         padd = add --patch -u
         plog = log -p --decorate
         slog = log --graph --stat --decorate
         llog = log --graph --decorate --pretty=oneline --abbrev-commit --all
+        purge = "!f() { \
+            git clean -ffdx && \
+            git submodule foreach --recursive \
+                git clean -ffdx; \
+        }; f"
+        nuke = "!f() { \
+            branch=$(git rev-parse --abbrev-ref HEAD); \
+            git fetch origin && \
+            git reset --hard origin/$branch && \
+            git clean -ffdx && \
+            git submodule foreach --recursive \
+                git clean -ffdx && \
+            git submodule foreach --recursive \
+                git reset --hard && \
+            git submodule update --init --recursive; \
+            }; f"
