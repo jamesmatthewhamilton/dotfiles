@@ -1,19 +1,11 @@
 #!/usr/bin/env bash
 set -eu
 
-# Get the directory where this script lives (dotfiles root)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Resolve the dotfiles repo root (one level up from runonce/)
+DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Load shared color definitions
-source "${SCRIPT_DIR}/bash/lib_colors.sh"
-
-warn() {
-    printf "${BOLD_YELLOW}WARNING: %s${RESET}\n" "$1"
-}
-
-success() {
-    printf "${GREEN}✓ %s${RESET}\n" "$1"
-}
+# Load shared logging functions (auto-sources colors.sh)
+source "${DOTFILES_ROOT}/bash/common/logger.sh"
 
 # Verify SHA256 checksum of a file. Exits on mismatch.
 verify_checksum() {
@@ -59,7 +51,7 @@ create_symlink() {
 
     # Ensure source exists
     if [ ! -e "$source" ]; then
-        warn "Source file does not exist: $source"
+        warning-log "Source file does not exist: $source"
         return 1
     fi
 
@@ -76,24 +68,24 @@ create_symlink() {
         local current_target
         current_target="$(readlink "$target")"
         if [ "$current_target" = "$source" ]; then
-            success "Already linked: $target -> $source"
+            success-log "Already linked: $target -> $source"
             return 0
         else
             # Different symlink, back it up
             local backup
             backup="$(backup_file "$target")"
-            warn "Existing symlink renamed to: $backup"
+            warning-log "Existing symlink renamed to: $backup"
         fi
     elif [ -e "$target" ]; then
         # Regular file/directory exists, back it up
         local backup
         backup="$(backup_file "$target")"
-        warn "Existing file renamed to: $backup"
+        warning-log "Existing file renamed to: $backup"
     fi
 
     # Create the symlink
     ln -s "$source" "$target"
-    success "Linked: $target -> $source"
+    success-log "Linked: $target -> $source"
 }
 
 # Setup all dotfile symlinks
@@ -102,11 +94,11 @@ setup_symlinks() {
 
     # Special case: if ~/.bashrc exists as a regular file, append its contents to bashrc_tmp.sh
     if [ -f "${HOME}/.bashrc" ] && [ ! -L "${HOME}/.bashrc" ]; then
-        local tmp_file="${SCRIPT_DIR}/bash/bashrc_tmp.sh"
+        local tmp_file="${DOTFILES_ROOT}/bash/bashrc_tmp.sh"
 
         # Skip if migration was already performed
         if grep -Fq "[START] Migration from original ~/.bashrc" "$tmp_file" 2>/dev/null; then
-            warn "Migration markers already present in bashrc_tmp.sh, skipping"
+            warning-log "Migration markers already present in bashrc_tmp.sh, skipping"
         else
             printf "Moving contents of bashrc to bashrc_tmp...\n"
             {
@@ -119,32 +111,33 @@ setup_symlinks() {
                 echo "# ------ [END] Migration from original ~/.bashrc ------"
                 echo "# -----------------------------------------------------"
             } >> "$tmp_file"
-            success "Appended ~/.bashrc contents to bashrc_tmp.sh"
+            success-log "Appended ~/.bashrc contents to bashrc_tmp.sh"
         fi
     fi
 
     # Bash configuration - main entry point
-    create_symlink "${SCRIPT_DIR}/bash/bashrc.sh" "${HOME}/.bashrc"
+    create_symlink "${DOTFILES_ROOT}/bash/bashrc.sh" "${HOME}/.bashrc"
 
-    # Bash libraries - loaded first (lib_*.sh)
-    create_symlink "${SCRIPT_DIR}/bash/lib_colors.sh" "${HOME}/.lib_colors.sh"
+    # Shared libraries for scripts (~/.common/*.sh)
+    create_symlink "${DOTFILES_ROOT}/bash/common/colors.sh" "${HOME}/.common/colors.sh"
+    create_symlink "${DOTFILES_ROOT}/bash/common/logger.sh" "${HOME}/.common/logger.sh"
 
     # Bash configuration - modular config files
     # These are sourced by bashrc.sh via glob pattern bashrc_[[:alpha:]]*.sh
-    create_symlink "${SCRIPT_DIR}/bash/bashrc_config.sh" "${HOME}/.bashrc_config.sh"
-    create_symlink "${SCRIPT_DIR}/bash/bashrc_aliases.sh" "${HOME}/.bashrc_aliases.sh"
-    create_symlink "${SCRIPT_DIR}/bash/bashrc_docker.sh" "${HOME}/.bashrc_docker.sh"
-    create_symlink "${SCRIPT_DIR}/bash/bashrc_tmp.sh" "${HOME}/.bashrc_tmp.sh"
+    create_symlink "${DOTFILES_ROOT}/bash/bashrc_config.sh" "${HOME}/.bashrc_config.sh"
+    create_symlink "${DOTFILES_ROOT}/bash/bashrc_aliases.sh" "${HOME}/.bashrc_aliases.sh"
+    create_symlink "${DOTFILES_ROOT}/bash/bashrc_docker.sh" "${HOME}/.bashrc_docker.sh"
+    create_symlink "${DOTFILES_ROOT}/bash/bashrc_tmp.sh" "${HOME}/.bashrc_tmp.sh"
 
     # Mark bashrc_tmp.sh as skip-worktree so local changes don't appear in git status
-    git -C "${SCRIPT_DIR}" update-index --skip-worktree bash/bashrc_tmp.sh 2>/dev/null && \
-        success "Marked bashrc_tmp.sh as skip-worktree" || true
+    git -C "${DOTFILES_ROOT}" update-index --skip-worktree bash/bashrc_tmp.sh 2>/dev/null && \
+        success-log "Marked bashrc_tmp.sh as skip-worktree" || true
 
     # Git configuration
-    create_symlink "${SCRIPT_DIR}/.gitconfig" "${HOME}/.gitconfig"
+    create_symlink "${DOTFILES_ROOT}/.gitconfig" "${HOME}/.gitconfig"
 
     # Emacs configuration
-    create_symlink "${SCRIPT_DIR}/emacs/init.el" "${HOME}/.emacs.d/init.el"
+    create_symlink "${DOTFILES_ROOT}/emacs/init.el" "${HOME}/.emacs.d/init.el"
 
     # macOS-specific (only on Darwin)
     if [ "$(uname)" = "Darwin" ]; then
@@ -152,12 +145,12 @@ setup_symlinks() {
         # DefaultKeyBinding.dict files — they must be real copies.
         mkdir -p "${HOME}/Library/KeyBindings"
         mkdir -p "${HOME}/Library/Keyboard Layouts"
-        cp "${SCRIPT_DIR}/mac/DefaultKeyBinding.dict" "${HOME}/Library/KeyBindings/DefaultKeyBinding.dict"
-        success "Copied: DefaultKeyBinding.dict -> ~/Library/KeyBindings/"
-        cp "${SCRIPT_DIR}/mac/USPlain.keylayout" "${HOME}/Library/Keyboard Layouts/USPlain.keylayout"
-        success "Copied: USPlain.keylayout -> ~/Library/Keyboard Layouts/"
+        cp "${DOTFILES_ROOT}/mac/DefaultKeyBinding.dict" "${HOME}/Library/KeyBindings/DefaultKeyBinding.dict"
+        success-log "Copied: DefaultKeyBinding.dict -> ~/Library/KeyBindings/"
+        cp "${DOTFILES_ROOT}/mac/USPlain.keylayout" "${HOME}/Library/Keyboard Layouts/USPlain.keylayout"
+        success-log "Copied: USPlain.keylayout -> ~/Library/Keyboard Layouts/"
 
-        create_symlink "${SCRIPT_DIR}/bash/mac_bashrc.sh" "${HOME}/.mac_bashrc.sh"
+        create_symlink "${DOTFILES_ROOT}/bash/mac_bashrc.sh" "${HOME}/.mac_bashrc.sh"
     fi
 
     printf "\n=== Symlink setup complete ===\n"
@@ -224,11 +217,11 @@ does_cmd_exist() {
 # This makes conda available as a command without starting in (base)
 setup_conda() {
     local CONDA_DIR="$HOME/Repos/conda"
-    local CONDA_INIT_FILE="${SCRIPT_DIR}/bash/bashrc_conda.sh"
+    local CONDA_INIT_FILE="${DOTFILES_ROOT}/bash/bashrc_conda.sh"
 
     # Skip if already installed
     if [ -x "$CONDA_DIR/bin/conda" ]; then
-        success "Conda already installed at $CONDA_DIR"
+        success-log "Conda already installed at $CONDA_DIR"
         # Regenerate init file in case conda was upgraded
         generate_conda_init "$CONDA_DIR" "$CONDA_INIT_FILE"
         return 0
@@ -275,7 +268,7 @@ setup_conda() {
     # Generate conda initialization file for bashrc
     generate_conda_init "$CONDA_DIR" "$CONDA_INIT_FILE"
 
-    success "Conda installed to $CONDA_DIR (base auto-activation disabled)"
+    success-log "Conda installed to $CONDA_DIR (base auto-activation disabled)"
 }
 
 # Generate conda init script to a file (avoids conda modifying ~/.bashrc)
@@ -284,7 +277,7 @@ generate_conda_init() {
     local output_file="$2"
 
     if [ ! -x "$conda_dir/bin/conda" ]; then
-        warn "Conda not found at $conda_dir, skipping init file generation"
+        warning-log "Conda not found at $conda_dir, skipping init file generation"
         return 1
     fi
 
@@ -299,7 +292,7 @@ generate_conda_init() {
         "$conda_dir/bin/conda" shell.bash hook
     } > "$output_file"
 
-    success "Generated $output_file"
+    success-log "Generated $output_file"
 }
 
 # Install Homebrew on macOS if not present, and ensure it's in PATH
@@ -312,7 +305,7 @@ setup_homebrew() {
     # Check if brew already exists
     local need_install=true
     if [ -x /opt/homebrew/bin/brew ] || [ -x /usr/local/bin/brew ]; then
-        success "Homebrew already installed"
+        success-log "Homebrew already installed"
         need_install=false
     fi
 
@@ -333,7 +326,7 @@ setup_homebrew() {
         rm -f "$brew_tmp"
         trap - EXIT
 
-        success "Homebrew installed"
+        success-log "Homebrew installed"
     fi
 
     # Always add brew to PATH for this session (needed for non-interactive scripts)
@@ -348,14 +341,14 @@ setup_homebrew() {
 setup_docker() {
     # Skip if already installed
     if does_cmd_exist docker; then
-        success "Docker already installed"
+        success-log "Docker already installed"
         return 0
     fi
 
     if [ "$(uname)" = "Darwin" ]; then
         printf "Installing Docker Desktop (brew cask)…\n"
         brew install --cask docker || true
-        success "Docker Desktop installed (launch manually from Applications)"
+        success-log "Docker Desktop installed (launch manually from Applications)"
     elif does_cmd_exist apt-get; then
         printf "Installing Docker (official apt repo)…\n"
         # Prerequisites
@@ -381,7 +374,7 @@ setup_docker() {
 
         # Allow current user to run docker without sudo
         $SUDO usermod -aG docker "$USER" 2>/dev/null || true
-        success "Docker installed and enabled on boot (log out and back in for group change)"
+        success-log "Docker installed and enabled on boot (log out and back in for group change)"
 
     elif does_cmd_exist dnf || does_cmd_exist yum; then
         printf "Installing Docker (official yum/dnf repo)…\n"
@@ -403,9 +396,9 @@ setup_docker() {
 
         # Allow current user to run docker without sudo
         $SUDO usermod -aG docker "$USER" 2>/dev/null || true
-        success "Docker installed and enabled on boot (log out and back in for group change)"
+        success-log "Docker installed and enabled on boot (log out and back in for group change)"
     else
-        warn "Could not install Docker: unsupported package manager"
+        warning-log "Could not install Docker: unsupported package manager"
     fi
 }
 
@@ -483,12 +476,12 @@ install() {
                 fi
                 if [ "$(dscl . -read /Users/$USER UserShell | awk '{print $2}')" != "$brew_bash" ]; then
                     chsh -s "$brew_bash"
-                    success "Login shell set to $brew_bash"
+                    success-log "Login shell set to $brew_bash"
                 else
-                    success "Login shell already set to $brew_bash"
+                    success-log "Login shell already set to $brew_bash"
                 fi
             else
-                warn "Homebrew bash not found, skipping login shell change"
+                warning-log "Homebrew bash not found, skipping login shell change"
             fi
 
             # Optional: set up fzf key bindings if installed
