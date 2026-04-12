@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Global pre-commit hook: block commits when user.name or user.email is missing.
+# --- Global Git Pre-Commit Hooks ---
+for f in ~/.common/*.sh; do [ -f "$f" ] && . "$f"; done
 
 name="$(git config user.name)"
 email="$(git config user.email)"

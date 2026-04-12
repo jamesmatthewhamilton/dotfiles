@@ -8,12 +8,12 @@ if [[ -z "${NC:-}" ]]; then
     source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/colors.sh"
 fi
 
-INFO="${CYAN}[INFO]${NC} "
-DEBUG="${MAGENTA}[DEBUG]${NC} "
-WARNING="${YELLOW}[WARNING]${NC} "
-ERROR="${RED}[ERROR]${NC} "
+export INFO="${CYAN}[INFO]${NC} "
+export DEBUG="${MAGENTA}[DEBUG]${NC} "
+export WARNING="${YELLOW}[WARNING]${NC} "
+export ERROR="${RED}[ERROR]${NC} "
 
-SUCCESS="${GREEN_BG}[SUCCESS]${NC} "
-FAILURE="${RED_BG}[FAILURE]${NC} "
+export SUCCESS="${GREEN_BG}[SUCCESS]${NC} "
+export FAILURE="${RED_BG}[FAILURE]${NC} "
 
-HINT="${MAGENTA}[HINT]${NC} "
+export HINT="${MAGENTA}[HINT]${NC} "

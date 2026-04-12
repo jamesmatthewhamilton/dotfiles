@@ -8,6 +8,8 @@
         rh = reset HEAD  # 'git restore --staged'
         df = diff
         ds = diff --staged
+        cm = commit --message
+        ca = commit --amend
         sub = submodule
         rsub = submodule update --init --recursive
         sf = submodule foreach

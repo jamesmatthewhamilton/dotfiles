@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
-# Global post-commit hook: print the identity used for the commit.
-printf "${INFO}\033[1;36m%s <%s>\033[0m\n" "$(git config user.name)" "$(git config user.email)"
+# --- Global Git Post-Commit Hooks ---
+for f in ~/.common/*.sh; do [ -f "$f" ] && . "$f"; done
+
+printf "${CYAN}%s <%s>${NC}\n" "$(git config user.name)" "$(git config user.email)"

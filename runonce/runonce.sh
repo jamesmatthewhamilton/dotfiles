@@ -134,7 +134,7 @@ setup_symlinks() {
         printf "$SUCCESS%s\n" "Marked bashrc_tmp.sh as skip-worktree" || true
 
     # Git configuration
-    create_symlink "${DOTFILES_ROOT}/.gitconfig" "${HOME}/.gitconfig"
+    create_symlink "${DOTFILES_ROOT}/gitconfig" "${HOME}/.gitconfig"
 
     # Git global hooks
     mkdir -p "${HOME}/.githooks"
