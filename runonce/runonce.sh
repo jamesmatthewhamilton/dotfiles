@@ -409,6 +409,59 @@ setup_docker() {
     fi
 }
 
+# Apply preferred macOS System Settings — mimics clicking through Settings.app.
+#
+# Currently handles:
+#   - Privacy & Security > Analytics & Improvements (all toggles off)
+#
+# macOS ONLY — caller must guard with `[ "$(uname)" = "Darwin" ]`.
+# Safe to run repeatedly; each toggle is idempotent. Uses sudo for the system-wide
+# CrashReporter plist; other toggles write to the user's defaults domain.
+settings_app() {
+    printf "\n=== Applying Settings.app preferences ===\n"
+
+    # ------------ Analytics & Improvements ------------
+    printf "\n--- Privacy & Security > Analytics & Improvements ---\n\n"
+
+    # Share Mac Analytics — diagnostic and usage data (may include location)
+    if sudo defaults write "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory.plist" AutoSubmit -bool false 2>/dev/null \
+       && defaults write com.apple.CrashReporter DialogType -string "none" 2>/dev/null; then
+        success-log "Share Mac Analytics: disabled"
+    else
+        warning-log "Share Mac Analytics: failed to disable (may need Full Disk Access)"
+    fi
+
+    # Improve Siri & Dictation — audio recordings of Siri, Dictation, and Translate
+    if defaults write com.apple.assistant.support "Siri Data Sharing Opt-In Status" -int 2 2>/dev/null; then
+        success-log "Improve Siri & Dictation: disabled"
+    else
+        warning-log "Improve Siri & Dictation: failed to disable"
+    fi
+
+    # Improve Assistive Voice Features — audio from Voice Shortcuts and Voice Control
+    if defaults write com.apple.Accessibility AXSAssistiveVoiceFeaturesOptIn -bool false 2>/dev/null; then
+        success-log "Improve Assistive Voice Features: disabled"
+    else
+        warning-log "Improve Assistive Voice Features: failed to disable"
+    fi
+
+    # Share with App Developers — app crash and usage data
+    if defaults write com.apple.appleseed.FeedbackAssistant "Autosend" -bool false 2>/dev/null; then
+        success-log "Share with App Developers: disabled"
+    else
+        warning-log "Share with App Developers: failed to disable"
+    fi
+
+    # Share iCloud Analytics — iCloud, Siri, and intelligent features usage data
+    if defaults write com.apple.assistant.support "iCloud Analytics Opt-In Status" -int 1 2>/dev/null; then
+        success-log "Share iCloud Analytics: disabled"
+    else
+        warning-log "Share iCloud Analytics: failed to disable"
+    fi
+
+    printf "\n=== Settings.app preferences complete ===\n"
+}
+
 need_sudo() {
   if [ "$(id -u)" -eq 0 ]; then
     SUDO=""
@@ -541,6 +594,11 @@ install() {
 
     # ----- Install Docker -----
     setup_docker
+
+    # ----- macOS system settings (Privacy & Security toggles, etc.) -----
+    if [ "$(uname)" = "Darwin" ]; then
+        settings_app
+    fi
 
     # ----- Post-install quality-of-life tweaks -----
 
