@@ -1,8 +1,8 @@
 # ANSI color codes for terminal output
 # Usage: printf "${RED}Error:${RESET} something went wrong\n"
 
-# Reset Color (RC)
-RC='\033[0m'
+# No Color (NC)
+NC='\033[0m'
 
 # Colors
 BLACK='\033[0;30m'

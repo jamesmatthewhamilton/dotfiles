@@ -1,15 +1,19 @@
-# Shared logging functions for all dotfiles scripts.
-# Provides: info, success, warn, error
-# Dependency: ./colors.sh (auto-sourced if needed)
+# Shared logging banners.
+# Uses vars instead of functions for graceful degradation.
 
 [[ -n "${_COMMON_LOGGER_LOADED:-}" ]] && return 0
 _COMMON_LOGGER_LOADED=1
 
-if [[ -z "${RC:-}" ]]; then
+if [[ -z "${NC:-}" ]]; then
     source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/colors.sh"
 fi
 
-info-log()    { printf "${CYAN_B}[INFO]${RC} %s\n" "$1"; }
-success-log() { printf "${GREEN_B}[SUCCESS]${RC} %s\n" "$1"; }
-warning-log() { printf "${YELLOW_B}[WARNING]${RC} %s\n" "$1" >&2; }
-error-log()   { printf "${RED_B}[ERROR]${RC} %s\n" "$1" >&2; }
+INFO="${CYAN}[INFO]${NC} "
+DEBUG="${MAGENTA}[DEBUG]${NC} "
+WARNING="${YELLOW}[WARNING]${NC} "
+ERROR="${RED}[ERROR]${NC} "
+
+SUCCESS="${GREEN_BG}[SUCCESS]${NC} "
+FAILURE="${RED_BG}[FAILURE]${NC} "
+
+HINT="${MAGENTA}[HINT]${NC} "

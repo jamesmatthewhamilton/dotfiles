@@ -51,7 +51,7 @@ create_symlink() {
 
     # Ensure source exists
     if [ ! -e "$source" ]; then
-        warning-log "Source file does not exist: $source"
+        printf "$WARNING%s\n" "Source file does not exist: $source"
         return 1
     fi
 
@@ -68,24 +68,24 @@ create_symlink() {
         local current_target
         current_target="$(readlink "$target")"
         if [ "$current_target" = "$source" ]; then
-            success-log "Already linked: $target -> $source"
+            printf "$SUCCESS%s\n" "Already linked: $target -> $source"
             return 0
         else
             # Different symlink, back it up
             local backup
             backup="$(backup_file "$target")"
-            warning-log "Existing symlink renamed to: $backup"
+            printf "$WARNING%s\n" "Existing symlink renamed to: $backup"
         fi
     elif [ -e "$target" ]; then
         # Regular file/directory exists, back it up
         local backup
         backup="$(backup_file "$target")"
-        warning-log "Existing file renamed to: $backup"
+        printf "$WARNING%s\n" "Existing file renamed to: $backup"
     fi
 
     # Create the symlink
     ln -s "$source" "$target"
-    success-log "Linked: $target -> $source"
+    printf "$SUCCESS%s\n" "Linked: $target -> $source"
 }
 
 # Setup all dotfile symlinks
@@ -98,7 +98,7 @@ setup_symlinks() {
 
         # Skip if migration was already performed
         if grep -Fq "[START] Migration from original ~/.bashrc" "$tmp_file" 2>/dev/null; then
-            warning-log "Migration markers already present in bashrc_tmp.sh, skipping"
+            printf "$WARNING%s\n" "Migration markers already present in bashrc_tmp.sh, skipping"
         else
             printf "Moving contents of bashrc to bashrc_tmp...\n"
             {
@@ -111,7 +111,7 @@ setup_symlinks() {
                 echo "# ------ [END] Migration from original ~/.bashrc ------"
                 echo "# -----------------------------------------------------"
             } >> "$tmp_file"
-            success-log "Appended ~/.bashrc contents to bashrc_tmp.sh"
+            printf "$SUCCESS%s\n" "Appended ~/.bashrc contents to bashrc_tmp.sh"
         fi
     fi
 
@@ -131,7 +131,7 @@ setup_symlinks() {
 
     # Mark bashrc_tmp.sh as skip-worktree so local changes don't appear in git status
     git -C "${DOTFILES_ROOT}" update-index --skip-worktree bash/bashrc_tmp.sh 2>/dev/null && \
-        success-log "Marked bashrc_tmp.sh as skip-worktree" || true
+        printf "$SUCCESS%s\n" "Marked bashrc_tmp.sh as skip-worktree" || true
 
     # Git configuration
     create_symlink "${DOTFILES_ROOT}/.gitconfig" "${HOME}/.gitconfig"
@@ -141,7 +141,7 @@ setup_symlinks() {
     create_symlink "${DOTFILES_ROOT}/git/hooks/pre-commit" "${HOME}/.githooks/pre-commit"
     create_symlink "${DOTFILES_ROOT}/git/hooks/post-commit" "${HOME}/.githooks/post-commit"
     chmod +x "${HOME}/.githooks/pre-commit" "${HOME}/.githooks/post-commit"
-    success-log "Global git hooksPath set to ~/.githooks"
+    printf "$SUCCESS%s\n" "Global git hooksPath set to ~/.githooks"
 
     # Emacs configuration
     create_symlink "${DOTFILES_ROOT}/emacs/init.el" "${HOME}/.emacs.d/init.el"
@@ -153,9 +153,9 @@ setup_symlinks() {
         mkdir -p "${HOME}/Library/KeyBindings"
         mkdir -p "${HOME}/Library/Keyboard Layouts"
         cp "${DOTFILES_ROOT}/mac/DefaultKeyBinding.dict" "${HOME}/Library/KeyBindings/DefaultKeyBinding.dict"
-        success-log "Copied: DefaultKeyBinding.dict -> ~/Library/KeyBindings/"
+        printf "$SUCCESS%s\n" "Copied: DefaultKeyBinding.dict -> ~/Library/KeyBindings/"
         cp "${DOTFILES_ROOT}/mac/USPlain.keylayout" "${HOME}/Library/Keyboard Layouts/USPlain.keylayout"
-        success-log "Copied: USPlain.keylayout -> ~/Library/Keyboard Layouts/"
+        printf "$SUCCESS%s\n" "Copied: USPlain.keylayout -> ~/Library/Keyboard Layouts/"
 
         create_symlink "${DOTFILES_ROOT}/bash/mac_bashrc.sh" "${HOME}/.mac_bashrc.sh"
     fi
@@ -228,7 +228,7 @@ setup_conda() {
 
     # Skip if already installed
     if [ -x "$CONDA_DIR/bin/conda" ]; then
-        success-log "Conda already installed at $CONDA_DIR"
+        printf "$SUCCESS%s\n" "Conda already installed at $CONDA_DIR"
         # Regenerate init file in case conda was upgraded
         generate_conda_init "$CONDA_DIR" "$CONDA_INIT_FILE"
         return 0
@@ -275,7 +275,7 @@ setup_conda() {
     # Generate conda initialization file for bashrc
     generate_conda_init "$CONDA_DIR" "$CONDA_INIT_FILE"
 
-    success-log "Conda installed to $CONDA_DIR (base auto-activation disabled)"
+    printf "$SUCCESS%s\n" "Conda installed to $CONDA_DIR (base auto-activation disabled)"
 }
 
 # Generate conda init script to a file (avoids conda modifying ~/.bashrc)
@@ -284,7 +284,7 @@ generate_conda_init() {
     local output_file="$2"
 
     if [ ! -x "$conda_dir/bin/conda" ]; then
-        warning-log "Conda not found at $conda_dir, skipping init file generation"
+        printf "$WARNING%s\n" "Conda not found at $conda_dir, skipping init file generation"
         return 1
     fi
 
@@ -299,7 +299,7 @@ generate_conda_init() {
         "$conda_dir/bin/conda" shell.bash hook
     } > "$output_file"
 
-    success-log "Generated $output_file"
+    printf "$SUCCESS%s\n" "Generated $output_file"
 }
 
 # Install Homebrew on macOS if not present, and ensure it's in PATH
@@ -312,7 +312,7 @@ setup_homebrew() {
     # Check if brew already exists
     local need_install=true
     if [ -x /opt/homebrew/bin/brew ] || [ -x /usr/local/bin/brew ]; then
-        success-log "Homebrew already installed"
+        printf "$SUCCESS%s\n" "Homebrew already installed"
         need_install=false
     fi
 
@@ -333,7 +333,7 @@ setup_homebrew() {
         rm -f "$brew_tmp"
         trap - EXIT
 
-        success-log "Homebrew installed"
+        printf "$SUCCESS%s\n" "Homebrew installed"
     fi
 
     # Always add brew to PATH for this session (needed for non-interactive scripts)
@@ -348,14 +348,14 @@ setup_homebrew() {
 setup_docker() {
     # Skip if already installed
     if does_cmd_exist docker; then
-        success-log "Docker already installed"
+        printf "$SUCCESS%s\n" "Docker already installed"
         return 0
     fi
 
     if [ "$(uname)" = "Darwin" ]; then
         printf "Installing Docker Desktop (brew cask)…\n"
         brew install --cask docker || true
-        success-log "Docker Desktop installed (launch manually from Applications)"
+        printf "$SUCCESS%s\n" "Docker Desktop installed (launch manually from Applications)"
     elif does_cmd_exist apt-get; then
         printf "Installing Docker (official apt repo)…\n"
         # Prerequisites
@@ -381,7 +381,7 @@ setup_docker() {
 
         # Allow current user to run docker without sudo
         $SUDO usermod -aG docker "$USER" 2>/dev/null || true
-        success-log "Docker installed and enabled on boot (log out and back in for group change)"
+        printf "$SUCCESS%s\n" "Docker installed and enabled on boot (log out and back in for group change)"
 
     elif does_cmd_exist dnf || does_cmd_exist yum; then
         printf "Installing Docker (official yum/dnf repo)…\n"
@@ -403,9 +403,9 @@ setup_docker() {
 
         # Allow current user to run docker without sudo
         $SUDO usermod -aG docker "$USER" 2>/dev/null || true
-        success-log "Docker installed and enabled on boot (log out and back in for group change)"
+        printf "$SUCCESS%s\n" "Docker installed and enabled on boot (log out and back in for group change)"
     else
-        warning-log "Could not install Docker: unsupported package manager"
+        printf "$WARNING%s\n" "Could not install Docker: unsupported package manager"
     fi
 }
 
@@ -426,37 +426,37 @@ settings_app() {
     # Share Mac Analytics — diagnostic and usage data (may include location)
     if sudo defaults write "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory.plist" AutoSubmit -bool false 2>/dev/null \
        && defaults write com.apple.CrashReporter DialogType -string "none" 2>/dev/null; then
-        success-log "Share Mac Analytics: disabled"
+        printf "$SUCCESS%s\n" "Share Mac Analytics: disabled"
     else
-        warning-log "Share Mac Analytics: failed to disable (may need Full Disk Access)"
+        printf "$FAILURE%s\n" "Share Mac Analytics: failed to disable (may need Full Disk Access)"
     fi
 
     # Improve Siri & Dictation — audio recordings of Siri, Dictation, and Translate
     if defaults write com.apple.assistant.support "Siri Data Sharing Opt-In Status" -int 2 2>/dev/null; then
-        success-log "Improve Siri & Dictation: disabled"
+        printf "$SUCCESS%s\n" "Improve Siri & Dictation: disabled"
     else
-        warning-log "Improve Siri & Dictation: failed to disable"
+        printf "$FAILURE%s\n" "Improve Siri & Dictation: failed to disable"
     fi
 
     # Improve Assistive Voice Features — audio from Voice Shortcuts and Voice Control
     if defaults write com.apple.Accessibility AXSAssistiveVoiceFeaturesOptIn -bool false 2>/dev/null; then
-        success-log "Improve Assistive Voice Features: disabled"
+        printf "$SUCCESS%s\n" "Improve Assistive Voice Features: disabled"
     else
-        warning-log "Improve Assistive Voice Features: failed to disable"
+        printf "$FAILURE%s\n" "Improve Assistive Voice Features: failed to disable"
     fi
 
     # Share with App Developers — app crash and usage data
     if defaults write com.apple.appleseed.FeedbackAssistant "Autosend" -bool false 2>/dev/null; then
-        success-log "Share with App Developers: disabled"
+        printf "$SUCCESS%s\n" "Share with App Developers: disabled"
     else
-        warning-log "Share with App Developers: failed to disable"
+        printf "$FAILURE%s\n" "Share with App Developers: failed to disable"
     fi
 
     # Share iCloud Analytics — iCloud, Siri, and intelligent features usage data
     if defaults write com.apple.assistant.support "iCloud Analytics Opt-In Status" -int 1 2>/dev/null; then
-        success-log "Share iCloud Analytics: disabled"
+        printf "$SUCCESS%s\n" "Share iCloud Analytics: disabled"
     else
-        warning-log "Share iCloud Analytics: failed to disable"
+        printf "$FAILURE%s\n" "Share iCloud Analytics: failed to disable"
     fi
 
     printf "\n=== Settings.app preferences complete ===\n"
@@ -536,12 +536,12 @@ install() {
                 fi
                 if [ "$(dscl . -read /Users/$USER UserShell | awk '{print $2}')" != "$brew_bash" ]; then
                     chsh -s "$brew_bash"
-                    success-log "Login shell set to $brew_bash"
+                    printf "$SUCCESS%s\n" "Login shell set to $brew_bash"
                 else
-                    success-log "Login shell already set to $brew_bash"
+                    printf "$SUCCESS%s\n" "Login shell already set to $brew_bash"
                 fi
             else
-                warning-log "Homebrew bash not found, skipping login shell change"
+                printf "$WARNING%s\n" "Homebrew bash not found, skipping login shell change"
             fi
 
             # Optional: set up fzf key bindings if installed
