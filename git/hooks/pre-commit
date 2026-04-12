@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Global pre-commit hook: block commits when user.name or user.email is missing.
+
+name="$(git config user.name)"
+email="$(git config user.email)"
+
+if [ -z "$name" ] || [ -z "$email" ]; then
+    printf "\n"
+    printf "Warning: Git identity is not fully configured for this repo.\n"
+    [ -z "$name" ]  && printf "  - user.name is not set\n"
+    [ -z "$email" ] && printf "  - user.email is not set\n"
+    printf "\n"
+    printf "[Hint]\n"
+    printf "git config --global user.name  \"Your Name\"\n"
+    printf "git config --global user.email \"you@example.com\"\n"
+    printf "\n"
+    exit 1
+fi

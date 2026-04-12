@@ -1,12 +1,13 @@
 [user]
 	name = James Matthew Hamilton
-	email = j.hamilton@gatech.edu
+	email =
 [alias]
 	st = status
         br = branch
-        co = checkout
+        co = checkout    # 'git restore'
+        rh = reset HEAD  # 'git restore --staged'
         df = diff
-        ds = diff --stat
+        ds = diff --staged
         sub = submodule
         rsub = submodule update --init --recursive
         sf = submodule foreach
@@ -31,3 +32,5 @@
                 git reset --hard && \
             git submodule update --init --recursive; \
             }; f"
+[core]
+	hooksPath = ~/.githooks

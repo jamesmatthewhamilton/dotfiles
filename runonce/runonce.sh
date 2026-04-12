@@ -136,6 +136,13 @@ setup_symlinks() {
     # Git configuration
     create_symlink "${DOTFILES_ROOT}/.gitconfig" "${HOME}/.gitconfig"
 
+    # Git global hooks
+    mkdir -p "${HOME}/.githooks"
+    create_symlink "${DOTFILES_ROOT}/git/hooks/pre-commit" "${HOME}/.githooks/pre-commit"
+    create_symlink "${DOTFILES_ROOT}/git/hooks/post-commit" "${HOME}/.githooks/post-commit"
+    chmod +x "${HOME}/.githooks/pre-commit" "${HOME}/.githooks/post-commit"
+    success-log "Global git hooksPath set to ~/.githooks"
+
     # Emacs configuration
     create_symlink "${DOTFILES_ROOT}/emacs/init.el" "${HOME}/.emacs.d/init.el"
 
