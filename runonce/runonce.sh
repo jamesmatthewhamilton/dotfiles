@@ -257,13 +257,11 @@ setup_conda() {
 
     local conda_tmp
     conda_tmp="$(mktemp /tmp/miniconda-XXXXXX)"
-    trap 'rm -f "$conda_tmp"' EXIT
 
     curl -fsSL "$MINICONDA_URL" -o "$conda_tmp"
     verify_checksum "$conda_tmp" "$MINICONDA_SHA256"
     bash "$conda_tmp" -b -p "$CONDA_DIR"
     rm -f "$conda_tmp"
-    trap - EXIT
 
     # Disable auto-activation of base environment
     "$CONDA_DIR/bin/conda" config --set auto_activate_base false
@@ -294,13 +292,11 @@ setup_homebrew() {
         local brew_sha256="dfd5145fe2aa5956a600e35848765273f5798ce6def01bd08ecec088a1268d91"
         local brew_tmp
         brew_tmp="$(mktemp /tmp/brew-install-XXXXXX)"
-        trap 'rm -f "$brew_tmp"' EXIT
 
         curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/${brew_commit}/install.sh" -o "$brew_tmp"
         verify_checksum "$brew_tmp" "$brew_sha256"
         NONINTERACTIVE=1 /bin/bash "$brew_tmp"
         rm -f "$brew_tmp"
-        trap - EXIT
 
         printf "$SUCCESS%s\n" "Homebrew installed"
     fi
@@ -614,13 +610,11 @@ install_conda() {
         fi
         local conda_tmp
         conda_tmp="$(mktemp /tmp/miniconda-XXXXXX)"
-        trap 'rm -f "$conda_tmp"' EXIT
 
         curl -fsSL "$MINICONDA_URL" -o "$conda_tmp"
         verify_checksum "$conda_tmp" "$MINICONDA_SHA256"
         bash "$conda_tmp" -b -p "$HOME/miniconda3"
         rm -f "$conda_tmp"
-        trap - EXIT
         export PATH="$HOME/miniconda3/bin:$PATH"
     fi
 
