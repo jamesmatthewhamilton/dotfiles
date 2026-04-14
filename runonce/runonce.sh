@@ -256,11 +256,12 @@ setup_conda() {
     fi
 
     local conda_tmp
-    conda_tmp="$(mktemp /tmp/miniconda-XXXXXX)"
+    conda_tmp="$(mktemp /tmp/miniconda-XXXXXX.sh)"
 
     curl -fsSL "$MINICONDA_URL" -o "$conda_tmp"
     verify_checksum "$conda_tmp" "$MINICONDA_SHA256"
-    bash "$conda_tmp" -b -p "$CONDA_DIR"
+    chmod +x "$conda_tmp"
+    "$conda_tmp" -b -p "$CONDA_DIR"
     rm -f "$conda_tmp"
 
     # Disable auto-activation of base environment
@@ -609,11 +610,12 @@ install_conda() {
             fi
         fi
         local conda_tmp
-        conda_tmp="$(mktemp /tmp/miniconda-XXXXXX)"
+        conda_tmp="$(mktemp /tmp/miniconda-XXXXXX.sh)"
 
         curl -fsSL "$MINICONDA_URL" -o "$conda_tmp"
         verify_checksum "$conda_tmp" "$MINICONDA_SHA256"
-        bash "$conda_tmp" -b -p "$HOME/miniconda3"
+        chmod +x "$conda_tmp"
+        "$conda_tmp" -b -p "$HOME/miniconda3"
         rm -f "$conda_tmp"
         export PATH="$HOME/miniconda3/bin:$PATH"
     fi
