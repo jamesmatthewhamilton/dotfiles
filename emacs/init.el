@@ -2,14 +2,17 @@
 ;;
 ;; Tip: Refresh init.el with 'M-x eval-buffer' for testing changes.
 ;;
-;; Table of Contents:
+;; --- Table of Contents ---
 ;;  I.   Library Setup
-;;  II.  Emacs Base
-;;  III. Keybindings
-;;  IV.  Language Specific
-;;  V.   Library Specific
+;;  II.  Variables
+;;  III. Emacs Base
+;;  IV.  Keybindings
+;;  V.   Language Specific
+;;  VI.  Library Specific
+;;  VII. Project Specific
 
-;; ------------------------ Library Setup ------------------------
+
+;; ------------------------ I. Library Setup ------------------------
 
 ;; repos
 (require 'package)
@@ -22,26 +25,49 @@
 ;; required packages
 ;; hint: see "list-packages" for more info.
 (setq my-required-packages
-      '(use-package
-	string-inflection
-        solarized-theme
-        lsp-mode
-        org
+      '(use-package           ;; package config macro
+	string-inflection     ;; case conversion utils
+	doom-themes           ;; color theme (most maintained)
+        solarized-theme       ;; color theme
+        lsp-mode              ;; language server protocol
+        org                   ;; org-mode
+        magit                 ;; git porcelain
         ;; ...
-
         ))
 
 ;; ensures missing packages are installed
-(dolist (package my-required-packages)
-  (unless (package-installed-p package)
-    (unless (assoc package package-archive-contents)
-      (package-refresh-contents))
-    (package-install package)))
+(unless (cl-every #'package-installed-p my-required-packages)
+  (package-refresh-contents)
+  (dolist (package my-required-packages)
+    (unless (package-installed-p package)
+      (package-install package))))
 
-;; ------------------------ Emacs Base  ------------------------
+
+;; ------------------------ II. Variables  ------------------------
+
+(defvar my-max-col 100 "Max column width.")
+
+
+;; ------------------------ III. Emacs Base  ------------------------
+
+;; disable all active themes before loading
+(mapc #'disable-theme custom-enabled-themes)
 
 ;; global theme
-(load-theme 'solarized-wombat-dark t)
+;; (load-theme 'solarized-wombat-dark t)  ;; 6
+;; (load-theme 'doom-ayu-dark t)  ;; 7 without comments, 9 with comments
+(load-theme 'doom-fairy-floss t)  ;; 9.5 without background, 7 with background
+;; (load-theme 'doom-laserwave t)  ;; 8 without background, 6 with background
+;; (load-theme 'doom-moonlight t)  ;; 7
+;; (load-theme 'doom-outrun-electric t)  ;; 8
+;; (load-theme 'doom-molokai t)  ;; 8.5
+
+;; [IMPORTANT] comment this before testing new themes
+;; overwrites theme colors with custom colors
+(custom-set-faces
+ ;;'(font-lock-comment-face ((t (:foreground "#8B8089"))))  ;; muted grey-pink
+ '(font-lock-comment-face ((t (:foreground "#9E7A8A"))))  ;; subtle rose
+ '(default ((t (:background "#0B0E14")))))  ;; ayu-dark's background
 
 ;; always end a file with a newline
 (setq require-final-newline t)
@@ -49,8 +75,8 @@
 ;; don't let `next-line' add new lines in buffer
 (setq next-line-add-newlines nil)
 
-;; set default-fill-column length
-(setq default-fill-column 100)
+;; forces \n while typing comments after length N
+(setq-default fill-column my-max-col)
 
 ;; when pressing \n the default-fill-column will kick-in
 (setq comment-auto-fill-only-comments t)
@@ -86,6 +112,12 @@
 
 ;; stop emacs from printing its banner every time it is invoked
 (setq inhibit-startup-message t)
+
+;; show line and column num as L{$N} C{$N}
+(setq mode-line-position '(" L%l C%c"))
+
+;; max column width before red angry highlight
+(setq whitespace-line-column my-max-col)
 
 ;; confirm on kill, because we fat-finger C-x C-c so often
 ;;(add-hook 'kill-emacs-query-functions
@@ -136,8 +168,8 @@ Can be used in `auto-save-hook'."
 (add-to-list 'auto-save-file-name-transforms (list "\\`.*\\'" (concat (auto-save-dir) "\\&") nil) t)
 
 
-;; ------------------------ Peronsal Keybindings ------------------------
-;; Tip: S-C = Control-Shift
+;; ------------------------ IV. Peronsal Keybindings ------------------------
+;; tip: S-C = control-shift
 
 (global-set-key (kbd "M-C-<down>") 'scroll-up-line)
 (global-set-key (kbd "M-C-<up>") 'scroll-down-line)
@@ -150,7 +182,8 @@ Can be used in `auto-save-hook'."
 (global-set-key (kbd "M-s") 'whitespace-mode)
 (global-set-key (kbd "M-l") 'global-display-line-numbers-mode)
 
-;; ------------------------ Langauge Specific ------------------------
+
+;; ------------------------ V. Langauge Specific ------------------------
 
 ; set up thise comment column
 (setq comment-column 40)
@@ -176,13 +209,13 @@ Can be used in `auto-save-hook'."
 ;; No auto-newline in c / c++ after {,} and stuff
 (setq c-auto-newline 'nil)
 (setq c-default-style "linux")
-(add-hook 'c++-mode-hook '(lambda ()
+(add-hook 'c++-mode-hook (lambda ()
   (setq tab-width 4)
   (setq indent-tabs-mode nil)
   (setq c-basic-offset 4)
   (setq c-auto-newline nil)
   (whitespace-mode)))
-(add-hook 'c-mode-hook '(lambda ()
+(add-hook 'c-mode-hook (lambda ()
   (setq tab-width 4)
   (setq indent-tabs-mode nil)
   (setq c-basic-offset 4)
@@ -194,11 +227,18 @@ Can be used in `auto-save-hook'."
 ;; XML-mode hack.. (?)
 (put 'xml-mode 'font-lock-defaults '(html-font-lock-keywords nil t))
 
-;; ------------------------ Libraries Specific ------------------------
-;; Org-Mode
+
+;; ------------------------ VI. Libraries Specific ------------------------
+
+;; lsp
+(add-hook 'c-mode-hook #'lsp)
+(add-hook 'c++-mode-hook #'lsp)
+
+;; org-mode
 (require 'org)
 (define-key global-map "\C-cl" 'org-store-link)
 (define-key global-map "\C-ca" 'org-agenda)
 (setq org-log-done t)
-(custom-set-variables
- '(package-selected-packages '(lsp-mode solarized-theme string-inflection use-package)))
+
+
+;; ------------------------ VII. Project Specific ------------------------
