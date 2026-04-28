@@ -14,6 +14,9 @@
 
 ;; ------------------------ I. Library Setup ------------------------
 
+;; open in os's full-screen mode
+(add-to-list 'default-frame-alist '(fullscreen . fullboth))
+
 ;; repos
 (require 'package)
 (setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
@@ -27,9 +30,10 @@
 (setq my-required-packages
       '(use-package           ;; package config macro
 	string-inflection     ;; case conversion utils
-	doom-themes           ;; color theme (most maintained)
-        solarized-theme       ;; color theme
+	doom-themes           ;; color theme most maintained
         lsp-mode              ;; language server protocol
+        yasnippet             ;; optional lsp-mode
+        company               ;; optional lsp-mode
         org                   ;; org-mode
         magit                 ;; git porcelain
         ;; ...
@@ -45,16 +49,12 @@
 
 ;; ------------------------ II. Variables  ------------------------
 
-(defvar my-max-col 100 "Max column width.")
+(defvar my-max-col 85 "Max column width.")
 
 
 ;; ------------------------ III. Emacs Base  ------------------------
 
-;; disable all active themes before loading
-(mapc #'disable-theme custom-enabled-themes)
-
 ;; global theme
-;; (load-theme 'solarized-wombat-dark t)  ;; 6
 ;; (load-theme 'doom-ayu-dark t)  ;; 7 without comments, 9 with comments
 (load-theme 'doom-fairy-floss t)  ;; 9.5 without background, 7 with background
 ;; (load-theme 'doom-laserwave t)  ;; 8 without background, 6 with background
@@ -62,12 +62,11 @@
 ;; (load-theme 'doom-outrun-electric t)  ;; 8
 ;; (load-theme 'doom-molokai t)  ;; 8.5
 
-;; [IMPORTANT] comment this before testing new themes
+;; [WARNING] comment this before testing new themes
 ;; overwrites theme colors with custom colors
 (custom-set-faces
- ;;'(font-lock-comment-face ((t (:foreground "#8B8089"))))  ;; muted grey-pink
- '(font-lock-comment-face ((t (:foreground "#9E7A8A"))))  ;; subtle rose
- '(default ((t (:background "#0B0E14")))))  ;; ayu-dark's background
+ '(default ((t (:background "#0B0E14"))))
+ '(font-lock-comment-face ((t (:foreground "#9E7A8A")))))
 
 ;; always end a file with a newline
 (setq require-final-newline t)
@@ -90,6 +89,10 @@
 
 ;; load last buffers that were open
 (desktop-save-mode 1)
+
+;; begging for no top bar
+(menu-bar-mode -1)
+(tool-bar-mode -1)
 
 ;; reload last buffers including ssh sessions
 ;; note: if starting emacs with ssh buffers and forgot vpn,
@@ -125,48 +128,53 @@
 ;;          'append)
 
 ;; set font size
-(set-face-attribute 'default nil :height 100)
-(add-hook 'find-file-hook (lambda () (set-face-attribute 'default nil :height 100)))
+(set-face-attribute 'default nil :height 120)
 
-;; Backup and auto-save files
-(make-directory "~/.emacs.d/backups" t)
-(set-file-modes "~/.emacs.d/backups" #o700)
-(setq backup-directory-alist '(("." . "~/.emacs.d/backups")))
-(setq backup-by-copying t)
-;; Force backup files to be owner-only (TRAMP copies remote permissions otherwise)
-(setq backup-by-copying-when-mismatch t)
-(defun force-backup-permissions ()
-  "Set backup file permissions to 600 after creation."
-  (when (and buffer-file-name backup-directory-alist)
-    (let ((backup (car (find-backup-file-name buffer-file-name))))
-      (when (and backup (file-exists-p backup))
-        (set-file-modes backup #o600)))))
-(add-hook 'after-save-hook #'force-backup-permissions)
-(defcustom auto-save-dir-base "~/.emacs.d/backups"
-  "File name base for auto-save-dir.
-The real auto save directory name is created by appending the UID of the user.
-/Restart of emacs required after changes."
-  :group 'files
-  :type 'directory)
-(defun auto-save-ensure-dir ()
-  "Ensure that the directory of `buffer-auto-save-file-name' exists.
-Can be used in `auto-save-hook'."
-  (cl-loop for buf in (buffer-list) do
-       (with-current-buffer buf
-         (when (and (buffer-file-name) ;; Is this buffer associated with a file?
-            (stringp buffer-auto-save-file-name)) ;; Does it have an auto-save-file?
-           (let ((dir (file-name-directory buffer-auto-save-file-name)))
-         (unless (file-directory-p dir)
-           (make-directory dir t)
-           ))))))
-(add-hook 'auto-save-hook #'auto-save-ensure-dir)
-(defun auto-save-dir ()
-  "Return the users auto save directory."
-  (concat auto-save-dir-base (number-to-string (user-uid))))
-(unless (file-directory-p (auto-save-dir))
-  (make-directory (auto-save-dir)))
-(add-to-list 'auto-save-file-name-transforms (list "\\`.*\\'" (concat (auto-save-dir) "\\&") nil) t)
+;; backups and auto-saves: keep them out of source directories
+(let ((backup-dir (expand-file-name "backups/" user-emacs-directory))
+      (auto-save-dir (expand-file-name "auto-saves/" user-emacs-directory)))
+  (make-directory backup-dir t)
+  (make-directory auto-save-dir t)
+  (set-file-modes backup-dir #o700)
+  (set-file-modes auto-save-dir #o700)
+  (setq backup-directory-alist `(("." . ,backup-dir)))
+  (setq auto-save-file-name-transforms `((".*" ,auto-save-dir t))))
 
+(setq backup-by-copying t
+      backup-by-copying-when-mismatch t
+      version-control t
+      kept-new-versions 6
+      kept-old-versions 2
+      delete-old-versions t)
+
+;; set font size to fill N columns perfectly
+(defun my/fit-font-for-splits (splits &optional target-cols)
+  "Set default face height so SPLITS side-by-side windows fit TARGET-COLS chars each."
+  (let* ((target-cols (or target-cols 85))
+         (frame-px (frame-pixel-width))
+         (overhead (* splits 30))
+         (px-per-col (/ (float (- frame-px overhead)) (* splits target-cols)))
+         (height (round (* (/ px-per-col 0.6) 10))))
+    (set-face-attribute 'default nil :height height)
+    (message "splits=%d height=%d" splits height)))
+
+(defun my/fit-font-2-split ()
+  "Fit font for 2-window horizontal split at 85 cols each."
+  (interactive)
+  (my/fit-font-for-splits 2))
+
+(defun my/fit-font-3-split ()
+  "Fit font for 3-window horizontal split at 85 cols each."
+  (interactive)
+  (my/fit-font-for-splits 3))
+
+(defun my/fit-font-4-split ()
+  "Fit font for 4-window horizontal split at 85 cols each."
+  (interactive)
+  (my/fit-font-for-splits 4))
+
+;; set font size by default to fill 2 screens
+(add-hook 'window-setup-hook #'my/fit-font-2-split)
 
 ;; ------------------------ IV. Peronsal Keybindings ------------------------
 ;; tip: S-C = control-shift
@@ -231,8 +239,12 @@ Can be used in `auto-save-hook'."
 ;; ------------------------ VI. Libraries Specific ------------------------
 
 ;; lsp
-(add-hook 'c-mode-hook #'lsp)
-(add-hook 'c++-mode-hook #'lsp)
+;; (add-hook 'c-mode-hook #'lsp)
+;; (add-hook 'c++-mode-hook #'lsp)
+
+;; solves the flymake-cc/lsp-mode conflic
+(with-eval-after-load 'flymake-cc
+  (defun flymake-cc (_report-fn &rest _args) nil))
 
 ;; org-mode
 (require 'org)
@@ -240,5 +252,14 @@ Can be used in `auto-save-hook'."
 (define-key global-map "\C-ca" 'org-agenda)
 (setq org-log-done t)
 
+;; ------------------------ VII. Remote Connections ------------------------
 
-;; ------------------------ VII. Project Specific ------------------------
+
+;; ------------------------ VIII. Project Specific ------------------------
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(company yasnippet use-package string-inflection solarized-theme magit lsp-mode doom-themes)))
