@@ -158,6 +158,8 @@ setup_symlinks() {
         printf "$SUCCESS%s\n" "Copied: USPlain.keylayout -> ~/Library/Keyboard Layouts/"
 
         create_symlink "${DOTFILES_ROOT}/bash/mac_bashrc.sh" "${HOME}/.mac_bashrc.sh"
+
+        setup_terminal_profile
     fi
 
     printf "\n=== Symlink setup complete ===\n"
@@ -373,6 +375,43 @@ setup_docker() {
     else
         printf "$WARNING%s\n" "Could not install Docker: unsupported package manager"
     fi
+}
+
+# Install the bundled "Pro" Terminal.app profile and set it as default + startup.
+#
+# macOS ONLY — caller must guard with `[ "$(uname)" = "Darwin" ]`.
+# Idempotent: re-running overwrites the "Pro" entry with the bundled version.
+# Note: if Terminal.app is open, quit and relaunch it for the new profile to apply.
+setup_terminal_profile() {
+    local profile_src="${DOTFILES_ROOT}/mac/Pro.terminal"
+    local prefs="${HOME}/Library/Preferences/com.apple.Terminal.plist"
+
+    if [ ! -f "$profile_src" ]; then
+        printf "$WARNING%s\n" "Pro.terminal not found at $profile_src, skipping Terminal profile setup"
+        return 0
+    fi
+
+    # Force cfprefsd to flush any in-memory state before we touch the file
+    defaults read com.apple.Terminal >/dev/null 2>&1 || true
+
+    # Ensure Window Settings dict exists (no-op if it already does)
+    plutil -insert "Window Settings" -dict "$prefs" 2>/dev/null || true
+
+    # Inject the Pro profile dict
+    if plutil -replace "Window Settings.Pro" -xml "$(cat "$profile_src")" "$prefs"; then
+        printf "$SUCCESS%s\n" "Installed Terminal profile: Pro"
+    else
+        printf "$FAILURE%s\n" "Failed to install Terminal profile"
+        return 1
+    fi
+
+    # Set Pro as the default for new windows and startup window
+    defaults write com.apple.Terminal "Default Window Settings" -string "Pro"
+    defaults write com.apple.Terminal "Startup Window Settings" -string "Pro"
+    printf "$SUCCESS%s\n" "Set Pro as Default and Startup Terminal profile"
+
+    # Tell cfprefsd to re-read the file so changes take effect on next Terminal launch
+    killall cfprefsd 2>/dev/null || true
 }
 
 # Apply preferred macOS System Settings — mimics clicking through Settings.app.
