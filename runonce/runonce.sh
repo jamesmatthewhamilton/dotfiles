@@ -369,9 +369,16 @@ setup_docker() {
             --allowerasing || \
         $SUDO $PM_CMD install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
+        # RHEL-family minimal cloud images don't preload the netfilter modules
+        # docker's iptables backend needs. Install matching extras + persist load.
+        $SUDO $PM_CMD install -y "kernel-modules-extra-$(uname -r)" 2>/dev/null || true
+        echo -e 'nf_tables\niptable_nat\nnf_nat' | $SUDO tee /etc/modules-load.d/docker.conf >/dev/null
+        $SUDO modprobe nf_tables iptable_nat nf_nat 2>/dev/null || true
+
         # Enable and start on boot
         $SUDO systemctl enable docker
-        $SUDO systemctl start docker
+        $SUDO systemctl start docker || \
+            printf "$WARNING%s\n" "docker.service failed to start. If a newer kernel was installed as a dep, reboot and run: sudo systemctl start docker"
 
         # Allow current user to run docker without sudo
         $SUDO usermod -aG docker "$USER" 2>/dev/null || true
