@@ -515,9 +515,60 @@ need_sudo() {
   fi
 }
 
+# Configure passwordless sudo for $USER if a password is currently required.
+# Without this, the script can stall mid-run on systems (e.g. a fresh Mac)
+# where every sudo call prompts for a password.
+#
+# Detection: `sudo -k` clears any cached credential, then `sudo -n true`
+# reports the actual sudoers config (not just a warm cache).
+# Skipped entirely if running as root or if NOPASSWD is already in effect.
+setup_passwordless_sudo() {
+    # Already root — no sudo needed
+    if [ "$(id -u)" -eq 0 ]; then
+        return 0
+    fi
+    if ! does_cmd_exist sudo; then
+        return 0
+    fi
+
+    # Bust any cached credential so sudo -n reflects actual sudoers config
+    sudo -k 2>/dev/null || true
+
+    if sudo -n true 2>/dev/null; then
+        printf "$SUCCESS%s\n" "sudo already passwordless for $USER"
+        return 0
+    fi
+
+    printf "Configuring passwordless sudo for %s (one-time password prompt)…\n" "$USER"
+
+    local rule="$USER ALL=(ALL) NOPASSWD: ALL"
+    local tmp
+    tmp="$(mktemp)"
+    echo "$rule" > "$tmp"
+
+    # Validate before installing — a broken sudoers file can lock you out
+    if ! sudo visudo -cf "$tmp" >/dev/null; then
+        printf "$FAILURE%s\n" "sudoers entry failed visudo validation"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    # macOS sudoers.d files are root:wheel; Linux uses root:root
+    local group="root"
+    if [ "$(uname)" = "Darwin" ]; then
+        group="wheel"
+    fi
+    sudo install -m 0440 -o root -g "$group" "$tmp" "/etc/sudoers.d/$USER"
+    rm -f "$tmp"
+    printf "$SUCCESS%s\n" "Wrote /etc/sudoers.d/$USER (NOPASSWD for $USER)"
+}
+
 install() {
 
     globals
+
+    # ----- Make subsequent sudo calls passwordless if needed -----
+    setup_passwordless_sudo
 
     # ----- Install Homebrew on macOS if needed -----
     setup_homebrew
