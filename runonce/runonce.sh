@@ -185,6 +185,7 @@ globals() {
         findutils  # GNU find/xargs/locate (gfind etc.) for parity w/ Linux
         gnu-sed  # GNU sed (gsed) for portable sed scripting
         gnu-tar  # GNU tar (gtar) for consistent tar behavior
+        emacs  # Editor
     )
 
     APT_PKGS=(
