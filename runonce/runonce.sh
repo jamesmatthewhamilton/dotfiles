@@ -159,6 +159,9 @@ setup_symlinks() {
 
         create_symlink "${DOTFILES_ROOT}/bash/mac_bashrc.sh" "${HOME}/.mac_bashrc.sh"
 
+        # macOS Terminal opens login shells — bridge .bash_profile to .bashrc
+        create_symlink "${DOTFILES_ROOT}/bash/bash_profile.sh" "${HOME}/.bash_profile"
+
         setup_terminal_profile
     fi
 
