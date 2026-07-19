@@ -163,6 +163,7 @@ setup_symlinks() {
         create_symlink "${DOTFILES_ROOT}/bash/bash_profile.sh" "${HOME}/.bash_profile"
 
         setup_terminal_profile
+        setup_keyboard_shortcuts
     fi
 
     printf "\n=== Symlink setup complete ===\n"
@@ -415,6 +416,37 @@ setup_terminal_profile() {
 
     # Tell cfprefsd to re-read the file so changes take effect on next Terminal launch
     killall cfprefsd 2>/dev/null || true
+}
+
+# Import the bundled System Settings keyboard shortcuts
+# (Mission Control, Spaces, Quick Note, Spotlight, Screenshots, etc).
+#
+# macOS ONLY — caller must guard with `[ "$(uname)" = "Darwin" ]`.
+# Idempotent: re-running overwrites the symbolichotkeys domain wholesale.
+# SystemUIServer is relaunched so Mission Control/Dock bindings apply
+# without a logout; some bindings (Stage Manager, Quick Note) may still
+# need a fresh login session to fully bind.
+setup_keyboard_shortcuts() {
+    local src="${DOTFILES_ROOT}/mac/symbolichotkeys.plist"
+
+    if [ ! -f "$src" ]; then
+        printf "$WARNING%s\n" "symbolichotkeys.plist not found at $src, skipping"
+        return 0
+    fi
+
+    # Flush cfprefsd's cached copy before we import
+    defaults read com.apple.symbolichotkeys >/dev/null 2>&1 || true
+
+    if defaults import com.apple.symbolichotkeys "$src"; then
+        printf "$SUCCESS%s\n" "Imported keyboard shortcuts from mac/symbolichotkeys.plist"
+    else
+        printf "$FAILURE%s\n" "Failed to import keyboard shortcuts"
+        return 1
+    fi
+
+    # Force prefs daemon + SystemUIServer to reload the new bindings
+    killall cfprefsd 2>/dev/null || true
+    osascript -e 'tell application "SystemUIServer" to quit' 2>/dev/null || true
 }
 
 # Apply preferred macOS System Settings — mimics clicking through Settings.app.
