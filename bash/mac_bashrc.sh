@@ -22,3 +22,6 @@ if command -v brew &>/dev/null; then
     fi
     unset _brew_prefix
 fi
+
+alias mac-disable-sleep='sudo pmset -a disablesleep 1'
+alias mac-enable-sleep='sudo pmset -a disablesleep 0'
