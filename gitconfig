@@ -1,6 +1,11 @@
 [user]
-	name = James Matthew Hamilton
-	email =
+	# Identity lives in ~/.gitconfig_local (per device, untracked).
+	# useConfigOnly makes git refuse to commit until it's filled in,
+	# instead of guessing user@hostname. Requires git >= 2.8 (2016);
+	# older gits ignore the key and just lose the enforcement.
+	useConfigOnly = true
+[include]
+	path = ~/.gitconfig_local
 [alias]
 	st = status
         br = branch

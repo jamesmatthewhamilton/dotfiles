@@ -88,6 +88,25 @@ create_symlink() {
     printf "$SUCCESS%s\n" "Linked: $target -> $source"
 }
 
+# Per-device git identity: gitconfig sets user.useConfigOnly and includes
+# ~/.gitconfig_local, so name/email live outside the repo. Stub the file if
+# missing; git refuses to commit until it is filled in.
+setup_gitconfig_local() {
+    local target="${HOME}/.gitconfig_local"
+
+    if [ -f "$target" ]; then
+        printf "$SUCCESS%s\n" "~/.gitconfig_local already present"
+        return 0
+    fi
+
+    {
+        printf '# Per-device git identity. Edit THIS file — do not run `git config --global`,\n'
+        printf '# which writes into the symlinked dotfiles gitconfig and dirties the repo.\n'
+        printf '[user]\n\tname =\n\temail =\n'
+    } > "$target"
+    printf "$WARNING%s\n" "Created ~/.gitconfig_local — fill in [user] name/email before committing"
+}
+
 # Setup all dotfile symlinks
 setup_symlinks() {
     printf "\n=== Setting up dotfile symlinks ===\n\n"
@@ -135,6 +154,7 @@ setup_symlinks() {
 
     # Git configuration
     create_symlink "${DOTFILES_ROOT}/gitconfig" "${HOME}/.gitconfig"
+    setup_gitconfig_local
 
     # Git global hooks
     mkdir -p "${HOME}/.githooks"
