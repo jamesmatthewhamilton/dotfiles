@@ -1,7 +1,8 @@
-
-
 # ------------ Aliases ------------
 # quick and used daily
+
+alias diff='diff --color=auto'
+alias diff2='git diff --no-index'
 
 # ------------ Functions ------------
 # niche and used occasionally
