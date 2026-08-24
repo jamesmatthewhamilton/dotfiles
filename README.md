@@ -27,7 +27,8 @@ cd ~/Repos/dotfiles
 
 ## Platform Support
 
-- **macOS**: Installs via Homebrew (auto-installed if missing)
-- **Ubuntu/Debian**: Installs via apt
-- **RHEL/CentOS/Fedora**: Installs via dnf/yum
-- **No root access**: `install-conda` provides core tools via Miniconda
+**Installer:**
+- **macOS**: homebrew
+- **Ubuntu/Debian**: apt
+- **RHEL/CentOS/Fedora**: dnf/yum
+- **Root-less Access**: conda

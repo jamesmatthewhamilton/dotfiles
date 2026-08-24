@@ -3,21 +3,6 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../bash/common" && pwd)/logger.sh"
 
-# === Pause helper ===
-# Shows a hint about the next step. If running interactively, waits for
-# Enter (continue) or q (quit). If stdin isn't a tty, just prints and continues.
-pause() {
-    printf "${HINT}%s\n" "$1"
-    if [ -t 0 ]; then
-        printf "${INFO}Press Enter to continue or q to quit: "
-        local answer
-        read -r answer
-        case "$answer" in
-            q|Q) printf "${INFO}Aborted by user.\n"; exit 0 ;;
-        esac
-    fi
-}
-
 # === Parse args (--ubuntu | --rocky required) ===
 usage() {
     printf "${ERROR}Required flag: --ubuntu or --rocky\n"
@@ -109,7 +94,7 @@ if ! command -v brew >/dev/null 2>&1; then
     exit 1
 fi
 if ! command -v VBoxManage >/dev/null 2>&1; then
-    pause "Next: install VirtualBox via brew cask. macOS will pop a password dialog (sudo for the .pkg). On Apple Silicon you may also need to open System Settings → Privacy & Security and click 'Allow' for an Oracle system extension, then re-run this script."
+    printf "${HINT}%s\n" "Installing VirtualBox via brew cask. macOS will pop a password dialog (sudo for the .pkg). On Apple Silicon you may also need to open System Settings → Privacy & Security and click 'Allow' for an Oracle system extension, then re-run this script."
     printf "${INFO}Installing VirtualBox...\n"
     ensure_brew_cask virtualbox
 fi

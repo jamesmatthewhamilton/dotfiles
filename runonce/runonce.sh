@@ -184,6 +184,7 @@ setup_symlinks() {
 
         setup_terminal_profile
         setup_keyboard_shortcuts
+        setup_text_replacements
     fi
 
     printf "\n=== Symlink setup complete ===\n"
@@ -475,6 +476,36 @@ setup_keyboard_shortcuts() {
     # Force prefs daemon + SystemUIServer to reload the new bindings
     killall cfprefsd 2>/dev/null || true
     osascript -e 'tell application "SystemUIServer" to quit' 2>/dev/null || true
+}
+
+# Import the bundled text replacements (System Settings > Keyboard > Text
+# Replacements) from res/mac-text-replacements.csv.
+#
+# macOS ONLY — caller must guard with `[ "$(uname)" = "Darwin" ]`.
+# Additive and idempotent: a shortcut that already exists is skipped, never
+# modified. Rows are flagged for iCloud sync so they propagate to other devices.
+# Note: a busy keyboard store is a normal transient failure, so this reports and
+# returns 0 rather than aborting the rest of setup — just re-run later.
+setup_text_replacements() {
+    local tool="${DOTFILES_ROOT}/tools/mac-text-replacements-import.sh"
+    local csv="${DOTFILES_ROOT}/res/mac-text-replacements.csv"
+
+    if [ ! -x "$tool" ]; then
+        printf "$WARNING%s\n" "mac-text-replacements-import.sh not found at $tool, skipping"
+        return 0
+    fi
+
+    if [ ! -f "$csv" ]; then
+        printf "$WARNING%s\n" "mac-text-replacements.csv not found at $csv, skipping"
+        return 0
+    fi
+
+    if "$tool" "$csv"; then
+        printf "$SUCCESS%s\n" "Imported text replacements from res/mac-text-replacements.csv"
+    else
+        printf "$FAILURE%s\n" "Could not import text replacements (keyboard store busy)"
+        printf "$HINT%s\n" "Re-run: ./tools/mac-text-replacements-import.sh res/mac-text-replacements.csv"
+    fi
 }
 
 # Apply preferred macOS System Settings — mimics clicking through Settings.app.
@@ -786,6 +817,7 @@ usage() {
     printf "  install        Install packages via system package manager (requires root)\n"
     printf "  install-conda  Install packages via conda (no root required)\n"
     printf "  all            Install packages AND setup symlinks (default)\n"
+    printf "  all-conda      Install packages via conda AND setup symlinks (no root)\n"
     printf "  help           Show this help message\n"
 }
 
@@ -804,6 +836,10 @@ main() {
             ;;
         all)
             install
+            setup_symlinks
+            ;;
+        all-conda)
+            install_conda
             setup_symlinks
             ;;
         help|--help|-h)
